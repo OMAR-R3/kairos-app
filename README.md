@@ -8,8 +8,8 @@ App nativa construida con [Expo](https://expo.dev) y React Native, creada origin
 
 ## Documentación del proyecto
 
-- [Plan DevOps del Proyecto Móvil](docs/Plan_DevOps_Proyecto_Movil_Kairos.docx)
-- [Documento técnico: CI y estrategia de despliegue](docs/Documento_Tecnico_CI_Despliegue_Kairos.docx)
+- Plan DevOps del Proyecto Móvil (entregado aparte, fuera del repositorio)
+- Documento técnico: CI y estrategia de despliegue (entregado aparte, fuera del repositorio)
 - [Guía de contribución](CONTRIBUTING.md)
 - Board del proyecto: gestionado en ClickUp (Sprint 0 y backlog)
 
