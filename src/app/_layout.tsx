@@ -1,18 +1,18 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
-import * as SplashScreen from 'expo-splash-screen';
-import { useColorScheme } from 'react-native';
+import { Stack } from "expo-router";
 
-import { AnimatedSplashOverlay } from '@/components/animated-icon';
-import AppTabs from '@/components/app-tabs';
-
-SplashScreen.preventAutoHideAsync();
-
-export default function TabLayout() {
-  const colorScheme = useColorScheme();
+// Navegador raiz de la app. Cada pantalla de Figma corresponde a una
+// ruta aqui. Sin tabs porque el recorrido es lineal (ver prototipo
+// de Figma: Login -> Inicio -> Solicitar visita -> ... -> QR).
+export default function RootLayout() {
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <AnimatedSplashOverlay />
-      <AppTabs />
-    </ThemeProvider>
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="index" />
+      <Stack.Screen name="inicio" />
+      <Stack.Screen name="solicitar-visita" />
+      <Stack.Screen name="confirmacion" />
+      <Stack.Screen name="mis-visitas" />
+      <Stack.Screen name="detalle-visita/[id]" />
+      <Stack.Screen name="codigo-qr" />
+    </Stack>
   );
 }
