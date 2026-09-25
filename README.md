@@ -1,6 +1,29 @@
-# Welcome to your Expo app 👋
+# Kairos Visitas
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Extensión móvil del sistema Kairos: permite a visitantes recurrentes de la Universidad Tecnológica de San Juan del Río registrar una visita y acceder a un código QR sin repetir el flujo completo de registro de la extranet web.
+
+App nativa construida con [Expo](https://expo.dev) y React Native, creada originalmente con [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+
+![CI](https://github.com/OMAR-R3/kairos-app/actions/workflows/ci.yml/badge.svg)
+
+## Documentación del proyecto
+
+- Plan DevOps del Proyecto Móvil (entregado aparte, fuera del repositorio)
+- Documento técnico: CI y estrategia de despliegue (entregado aparte, fuera del repositorio)
+- [Guía de contribución](CONTRIBUTING.md)
+- Board del proyecto: gestionado en ClickUp (Sprint 0 y backlog)
+
+## Evidencias de configuración
+
+- [Regla de protección de la rama main](docs/evidencias/Regla%20de%20protecci%C3%B3n%20de%20main%20activa%20y%20completa.jpg)
+- [Checks de CI en verde](docs/evidencias/Checks%20de%20CI%20en%20verde.jpg)
+- [Estado de un Pull Request real](docs/evidencias/Estado%20de%20un%20Pull%20Request%20real.jpg)
+
+## Flujo de trabajo
+
+El proyecto sigue Gitflow simplificado (`main`, `develop`, `feature/*`, `hotfix/*`). Ver [CONTRIBUTING.md](CONTRIBUTING.md) para el detalle de ramas, convención de commits y versionado.
+
+La rama `main` está protegida: todo cambio requiere Pull Request, al menos 1 aprobación, y que el pipeline de CI (lint + pruebas unitarias) pase en verde.
 
 ## Get started
 
@@ -25,6 +48,18 @@ In the output, you'll find options to open the app in a
 
 You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
 
+## Pruebas y linter
+
+```bash
+npm test
+```
+
+```bash
+npx expo lint
+```
+
+Ambos comandos corren automáticamente en el pipeline de CI en cada Pull Request hacia `main`.
+
 ## Get a fresh project
 
 When you're ready, run:
@@ -34,12 +69,6 @@ npm run reset-project
 ```
 
 This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
-
-### Other setup steps
-
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
 
 ## Learn more
 
