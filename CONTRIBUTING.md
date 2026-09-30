@@ -21,18 +21,27 @@ El proyecto sigue un esquema de ramificación ligero basado en Gitflow, adaptado
 
 ## Convención de commits
 
-Se usa el estándar **Conventional Commits**:
+Se usa el estándar **Conventional Commits**. Cada mensaje lleva el formato:
 
 ```
-feat: agregar validador de formulario de login
-fix: corregir expiración de token JWT
-docs: actualizar README con instrucciones de build
-chore: configurar ESLint
-refactor: extraer lógica de validación a módulo separado
-test: agregar prueba unitaria para validador de login
+tipo: descripción corta de lo que se hizo
 ```
 
-El prefijo indica el tipo de cambio y facilita generar un historial legible y, más adelante, un changelog automático.
+El tipo (prefijo) indica qué clase de cambio es, y facilita leer el historial y, más adelante, generar un changelog automático.
+
+| Prefijo | Cuándo se usa | Ejemplo |
+|---|---|---|
+| `feat` | Se agrega una funcionalidad nueva | `feat: agregar validador de formulario de login` |
+| `fix` | Se corrige un bug | `fix: corregir expiración de token JWT` |
+| `docs` | Cambios solo de documentación (README, CONTRIBUTING, capturas) | `docs: actualizar README con instrucciones de build` |
+| `chore` | Mantenimiento y configuración que no cambia el código de la app (ESLint, Jest, .gitignore, CI, dependencias) | `chore: configurar ESLint` |
+| `refactor` | Se reorganiza el código sin cambiar lo que hace | `refactor: extraer lógica de validación a módulo separado` |
+| `test` | Se agregan o ajustan pruebas | `test: agregar prueba unitaria para validador de login` |
+
+Reglas básicas:
+
+- La descripción va en minúsculas y en infinitivo, sin punto final.
+- Un commit por cambio lógico; evitar mezclar, por ejemplo, una funcionalidad nueva con un ajuste de configuración.
 
 ## Versionado
 
