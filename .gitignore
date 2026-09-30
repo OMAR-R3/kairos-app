@@ -40,6 +40,8 @@ yarn-error.*
 # editor / tooling
 .vscode/
 .claude/
+AGENTS.md
+CLAUDE.md
 
 example
 
