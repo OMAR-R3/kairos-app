@@ -1,4 +1,4 @@
-import { validateLoginForm } from "../validators";
+import { validateLoginForm, validateRegistroForm } from "../validators";
 
 describe("validateLoginForm", () => {
   it("es válido cuando el correo y la contraseña cumplen el formato esperado", () => {
@@ -57,5 +57,53 @@ describe("validateLoginForm", () => {
     });
 
     expect(result.valid).toBe(true);
+  });
+});
+
+describe("validateRegistroForm", () => {
+  const base = {
+    nombre: "Ana",
+    apellidoPaterno: "Lopez",
+    apellidoMaterno: "",
+    correo: "  ANA@Correo.com ",
+    telefono: "442 123 4567",
+    password: "abcd1234",
+    confirmarPassword: "abcd1234",
+  };
+
+  it("acepta un formulario valido y normaliza los datos", () => {
+    const r = validateRegistroForm(base);
+    expect(r.valid).toBe(true);
+    expect(r.values.correo).toBe("ana@correo.com");
+    expect(r.values.telefono).toBe("4421234567");
+    expect(r.values.apellido_materno).toBeNull();
+  });
+
+  it("marca los campos obligatorios vacios", () => {
+    const r = validateRegistroForm({
+      ...base, nombre: "", apellidoPaterno: "", correo: "", telefono: "",
+    });
+    expect(r.valid).toBe(false);
+    expect(Object.keys(r.errors)).toEqual(
+      expect.arrayContaining(["nombre", "apellidoPaterno", "correo", "telefono"])
+    );
+  });
+
+  it("rechaza correo con formato invalido", () => {
+    expect(validateRegistroForm({ ...base, correo: "ana@" }).errors.correo).toBeDefined();
+  });
+
+  it("rechaza telefono que no tiene 10 digitos", () => {
+    expect(validateRegistroForm({ ...base, telefono: "12345" }).errors.telefono).toBeDefined();
+  });
+
+  it("rechaza contrasena corta", () => {
+    const r = validateRegistroForm({ ...base, password: "abc", confirmarPassword: "abc" });
+    expect(r.errors.password).toBeDefined();
+  });
+
+  it("rechaza contrasenas que no coinciden", () => {
+    const r = validateRegistroForm({ ...base, confirmarPassword: "otra12345" });
+    expect(r.errors.confirmarPassword).toBeDefined();
   });
 });
