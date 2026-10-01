@@ -140,7 +140,6 @@ export default function CrearCuentaScreen() {
           <NavButton label="Ya tengo cuenta" href="/" dark={false} />
         </ScrollView>
       </KeyboardAvoidingView>
-      <NavButton label="Crear cuenta" href="/crear-cuenta" dark={false} />
     </Screen>
   );
 }
