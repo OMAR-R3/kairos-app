@@ -19,7 +19,6 @@ export type LoginValidationResult = {
   errors: LoginFormErrors;
 };
 
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MIN_PASSWORD_LENGTH = 8;
 
 export function validateLoginForm(values: LoginFormValues): LoginValidationResult {
@@ -43,5 +42,63 @@ export function validateLoginForm(values: LoginFormValues): LoginValidationResul
   return {
     valid: Object.keys(errors).length === 0,
     errors,
+  };
+}
+
+// ---------- Registro de visitante (Crear cuenta) ----------
+
+export type RegistroForm = {
+  nombre: string;
+  apellidoPaterno: string;
+  apellidoMaterno: string;
+  correo: string;
+  telefono: string;
+  password: string;
+  confirmarPassword: string;
+};
+
+export type RegistroErrors = Partial<Record<keyof RegistroForm, string>>;
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+export function validateRegistroForm(form: RegistroForm) {
+  const errors: RegistroErrors = {};
+
+  const nombre = form.nombre.trim();
+  const apellidoPaterno = form.apellidoPaterno.trim();
+  const apellidoMaterno = form.apellidoMaterno.trim();
+  const correo = form.correo.trim().toLowerCase();
+  const telefono = form.telefono.replace(/\D/g, ""); // solo digitos
+
+  if (!nombre) errors.nombre = "Escribe tu nombre";
+  if (!apellidoPaterno) errors.apellidoPaterno = "Escribe tu apellido paterno";
+
+  if (!correo) errors.correo = "Escribe tu correo";
+  else if (!EMAIL_REGEX.test(correo)) errors.correo = "El correo no es valido";
+
+  // Quitar este bloque si el backend deja el telefono como opcional
+  if (!telefono) errors.telefono = "Escribe tu telefono";
+  else if (telefono.length !== 10) errors.telefono = "Debe tener 10 digitos";
+
+  if (!form.password) errors.password = "Escribe una contrasena";
+  else if (form.password.length < 8)
+    errors.password = "Minimo 8 caracteres";
+
+  if (!form.confirmarPassword) errors.confirmarPassword = "Confirma tu contrasena";
+  else if (form.password !== form.confirmarPassword)
+    errors.confirmarPassword = "Las contrasenas no coinciden";
+
+  return {
+    valid: Object.keys(errors).length === 0,
+    errors,
+    // Datos ya normalizados, listos para mandar al backend
+    values: {
+      nombre,
+      apellido_paterno: apellidoPaterno,
+      apellido_materno: apellidoMaterno || null,
+      correo,
+      telefono,
+      password: form.password,
+    },
   };
 }
