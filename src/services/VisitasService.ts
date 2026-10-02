@@ -17,7 +17,7 @@ export const VisitasService = {
 
   async registrarVisitante(datos: DatosRegistro): Promise<void> {
     // Cambiar la ruta por la real del backend
-    const res = await fetch(`${API_URL}/api/visitantes/registro`, {
+    const res = await fetch(`${API_URL}/api/auth/visitante-registro`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(datos),
