@@ -1,5 +1,5 @@
-import { View, Text, StyleSheet } from "react-native";
 import { ReactNode } from "react";
+import { StyleSheet, Text, View } from "react-native";
 
 type ScreenProps = {
   title: string;
@@ -23,5 +23,5 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#fff", paddingTop: 80, paddingHorizontal: 24 },
   title: { fontSize: 22, fontWeight: "700", color: "#111111" },
   subtitle: { fontSize: 13, color: "#666666", marginTop: 6 },
-  body: { marginTop: 20, gap: 12 },
+  body: { flex: 1, marginTop: 20, gap: 12 },
 });
