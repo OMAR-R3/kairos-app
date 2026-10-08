@@ -58,6 +58,18 @@ export class SesionExpiradaError extends Error {
 
 export const generarFolio = (id: number) => `KV-${String(id).padStart(6, "0")}`;
 
+// Revisa la fecha de expiracion del JWT sin llamar al servidor.
+function tokenVigente(token: string): boolean {
+  try {
+    const parte = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+    const relleno = parte + "=".repeat((4 - (parte.length % 4)) % 4);
+    const payload = JSON.parse(atob(relleno));
+    return !payload.exp || payload.exp * 1000 > Date.now();
+  } catch {
+    return false;
+  }
+}
+
 async function peticionAutenticada(
   ruta: string,
   opciones: { method?: "GET" | "POST"; body?: unknown } = {}
@@ -117,7 +129,7 @@ export const VisitasService = {
     return visitante;
   },
 
-    async obtenerDepartamentos(): Promise<Departamento[]> {
+  async obtenerDepartamentos(): Promise<Departamento[]> {
     const res = await peticionAutenticada("/api/department");
 
     if (!res.ok) {
@@ -154,5 +166,19 @@ export const VisitasService = {
 
   async getToken(): Promise<string | null> {
     return SecureStore.getItemAsync(TOKEN_KEY);
+  },
+  // true si hay un token guardado y todavia no expira
+  async restaurarSesion(): Promise<boolean> {
+    try {
+      const token = await SecureStore.getItemAsync(TOKEN_KEY);
+      if (!token) return false;
+      if (!tokenVigente(token)) {
+        await SecureStore.deleteItemAsync(TOKEN_KEY);
+        return false;
+      }
+      return true;
+    } catch {
+      return false;
+    }
   },
 };

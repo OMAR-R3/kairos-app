@@ -1,5 +1,5 @@
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -9,6 +9,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  View
 } from "react-native";
 import Campo from "../components/Campo";
 import NavButton from "../components/NavButton";
@@ -31,6 +32,19 @@ export default function LoginScreen() {
   const [form, setForm] = useState<LoginFormValues>(FORM_INICIAL);
   const [errors, setErrors] = useState<LoginFormErrors>({});
   const [loading, setLoading] = useState(false);
+  const [verificando, setVerificando] = useState(true);
+
+  useEffect(() => {
+    let activo = true;
+    VisitasService.restaurarSesion().then((hay) => {
+      if (!activo) return;
+      if (hay) router.replace("/inicio");
+      else setVerificando(false);
+    });
+    return () => {
+      activo = false;
+    };
+  }, [router]);
 
   const setCampo = (campo: keyof LoginFormValues) => (texto: string) => {
     setForm((prev) => ({ ...prev, [campo]: texto }));
@@ -56,6 +70,14 @@ export default function LoginScreen() {
       setLoading(false);
     }
   };
+
+  if (verificando) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center" }}>
+        <ActivityIndicator />
+      </View>
+    );
+  }
 
   return (
     <Screen
