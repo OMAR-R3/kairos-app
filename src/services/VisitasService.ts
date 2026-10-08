@@ -143,7 +143,7 @@ export const VisitasService = {
 
   async agendarVisita(datos: DatosVisita): Promise<{ visita: Visita; folio: string }> {
     // visitante_id no se manda, el backend lo toma del token
-    const res = await peticionAutenticada("/api/visits", {
+    const res = await peticionAutenticada("/api/visits/me", {
       method: "POST",
       body: datos,
     });
