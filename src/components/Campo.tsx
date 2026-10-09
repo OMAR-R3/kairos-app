@@ -15,6 +15,8 @@ export type CampoProps = {
     secure?: boolean;
     autoCapitalize?: "none" | "words";
     maxLength?: number;
+    placeholder?: string;
+    multiline?: boolean;
 };
 
 // Campo de texto con etiqueta y mensaje de error.
@@ -22,6 +24,7 @@ export type CampoProps = {
 export default function Campo({
     label, value, onChangeText, error, keyboardType,
     secure = false, autoCapitalize = "none", maxLength,
+    placeholder, multiline = false,
 }: CampoProps) {
     return (
         <View style={styles.campo}>
@@ -34,7 +37,14 @@ export default function Campo({
                 autoCapitalize={autoCapitalize}
                 autoCorrect={false}
                 maxLength={maxLength}
-                style={[styles.input, error ? styles.inputError : null]}
+                placeholder={placeholder}
+                placeholderTextColor="#999"
+                multiline={multiline}
+                style={[
+                    styles.input,
+                    multiline && styles.multiline,
+                    error ? styles.inputError : null,
+                ]}
             />
             {error ? <Text style={styles.error}>{error}</Text> : null}
         </View>
@@ -48,6 +58,7 @@ const styles = StyleSheet.create({
         borderWidth: 1, borderColor: "#CFCFCF", borderRadius: 8,
         paddingHorizontal: 12, paddingVertical: 10, fontSize: 15, backgroundColor: "#FFFFFF",
     },
+    multiline: { minHeight: 80, textAlignVertical: "top" },
     inputError: { borderColor: "#C62828" },
     error: { color: "#C62828", fontSize: 12 },
 });
