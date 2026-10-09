@@ -143,7 +143,7 @@ export const VisitasService = {
 
   async agendarVisita(datos: DatosVisita): Promise<{ visita: Visita; folio: string }> {
     // visitante_id no se manda, el backend lo toma del token
-    const res = await peticionAutenticada("/api/visits", {
+    const res = await peticionAutenticada("/api/visits/me", {
       method: "POST",
       body: datos,
     });
@@ -168,6 +168,18 @@ export const VisitasService = {
     return SecureStore.getItemAsync(TOKEN_KEY);
   },
   // true si hay un token guardado y todavia no expira
+  async obtenerDatosSesion(): Promise<Record<string, unknown> | null> {
+    try {
+      const token = await SecureStore.getItemAsync(TOKEN_KEY);
+      if (!token) return null;
+      const parte = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+      const relleno = parte + "=".repeat((4 - (parte.length % 4)) % 4);
+      return JSON.parse(atob(relleno));
+    } catch {
+      return null;
+    }
+  },
+
   async restaurarSesion(): Promise<boolean> {
     try {
       const token = await SecureStore.getItemAsync(TOKEN_KEY);
