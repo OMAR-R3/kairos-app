@@ -45,6 +45,59 @@ export function validateLoginForm(values: LoginFormValues): LoginValidationResul
   };
 }
 
+// ---------- Agendar visita (HU-02) ----------
+
+export type VisitaForm = {
+  departamento: string;
+  fecha: string;
+  horaLlegada: string;
+  motivo: string;
+};
+
+export type VisitaErrors = Partial<Record<keyof VisitaForm, string>>;
+
+const FECHA_REGEX = /^\d{4}-\d{2}-\d{2}$/;
+const HORA_REGEX = /^\d{2}:\d{2}$/;
+
+export function validateVisitaForm(form: VisitaForm) {
+  const errors: VisitaErrors = {};
+
+  if (!form.departamento) errors.departamento = "Selecciona un departamento";
+
+  if (!form.fecha) {
+    errors.fecha = "La fecha es obligatoria";
+  } else if (!FECHA_REGEX.test(form.fecha)) {
+    errors.fecha = "Formato invalido (AAAA-MM-DD)";
+  } else {
+    const date = new Date(form.fecha + "T00:00:00");
+    if (isNaN(date.getTime())) {
+      errors.fecha = "Fecha no valida";
+    } else if (date < new Date(new Date().toDateString())) {
+      errors.fecha = "La fecha no puede ser en el pasado";
+    } else {
+      const day = date.getDay();
+      if (day === 0 || day === 6) errors.fecha = "Solo se permiten dias de lunes a viernes";
+    }
+  }
+
+  if (!form.horaLlegada) {
+    errors.horaLlegada = "La hora es obligatoria";
+  } else if (!HORA_REGEX.test(form.horaLlegada)) {
+    errors.horaLlegada = "Formato invalido (HH:MM)";
+  }
+
+  if (!form.motivo.trim()) {
+    errors.motivo = "El motivo es obligatorio";
+  } else if (!/[a-zA-ZáéíóúÁÉÍÓÚñÑ]/.test(form.motivo)) {
+    errors.motivo = "El motivo debe contener letras";
+  }
+
+  return {
+    valid: Object.keys(errors).length === 0,
+    errors,
+  };
+}
+
 // ---------- Registro de visitante (Crear cuenta) ----------
 
 export type RegistroForm = {

@@ -168,6 +168,18 @@ export const VisitasService = {
     return SecureStore.getItemAsync(TOKEN_KEY);
   },
   // true si hay un token guardado y todavia no expira
+  async obtenerDatosSesion(): Promise<Record<string, unknown> | null> {
+    try {
+      const token = await SecureStore.getItemAsync(TOKEN_KEY);
+      if (!token) return null;
+      const parte = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+      const relleno = parte + "=".repeat((4 - (parte.length % 4)) % 4);
+      return JSON.parse(atob(relleno));
+    } catch {
+      return null;
+    }
+  },
+
   async restaurarSesion(): Promise<boolean> {
     try {
       const token = await SecureStore.getItemAsync(TOKEN_KEY);
