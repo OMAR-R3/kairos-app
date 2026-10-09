@@ -27,8 +27,40 @@ export type Visitante = {
   dispositivo: string;
 };
 
+export type DatosVisita = {
+  motivo: string;
+  area: string;
+  fecha: string;
+};
+
+export type Visita = {
+  id: number;
+  folio: string;
+  motivo: string;
+  area: string;
+  fecha: string;
+  estado: string;
+};
+
 export const VisitasService = {
-  // TODO: agendarVisita(), obtenerVisitas(), obtenerQR()...
+  async agendarVisita(datos: DatosVisita): Promise<Visita> {
+    const token = await SecureStore.getItemAsync(TOKEN_KEY);
+    const res = await fetch(`${API_URL}/api/visitas`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(datos),
+    });
+
+    if (res.status === 401) throw new Error("Sesion expirada, inicia sesion de nuevo");
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error ?? "No se pudo agendar la visita");
+    }
+    return res.json();
+  },
 
   async registrarVisitante(datos: DatosRegistro): Promise<void> {
     const res = await fetch(`${API_URL}/api/auth/visitante-registro`, {

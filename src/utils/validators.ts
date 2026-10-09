@@ -102,3 +102,52 @@ export function validateRegistroForm(form: RegistroForm) {
     },
   };
 }
+
+// ---------- Agendar visita (HU-02) ----------
+
+export type VisitaForm = {
+  motivo: string;
+  area: string;
+  fecha: string;
+};
+
+export type VisitaErrors = Partial<Record<keyof VisitaForm, string>>;
+
+const FECHA_REGEX = /^\d{4}-\d{2}-\d{2}$/;
+
+export function validateVisitaForm(form: VisitaForm) {
+  const errors: VisitaErrors = {};
+
+  const motivo = form.motivo.trim();
+  const area = form.area.trim();
+
+  if (!motivo) {
+    errors.motivo = "El motivo es obligatorio";
+  } else if (!/[a-zA-ZáéíóúÁÉÍÓÚñÑ]/.test(motivo)) {
+    errors.motivo = "El motivo debe contener letras";
+  }
+
+  if (!area) {
+    errors.area = "El area es obligatoria";
+  } else if (!/[a-zA-ZáéíóúÁÉÍÓÚñÑ]/.test(area)) {
+    errors.area = "El area debe contener letras";
+  }
+
+  if (!form.fecha) {
+    errors.fecha = "La fecha es obligatoria";
+  } else if (!FECHA_REGEX.test(form.fecha)) {
+    errors.fecha = "Formato invalido (AAAA-MM-DD)";
+  } else {
+    const date = new Date(form.fecha + "T00:00:00");
+    if (isNaN(date.getTime())) {
+      errors.fecha = "Fecha no valida";
+    } else if (date < new Date(new Date().toDateString())) {
+      errors.fecha = "La fecha no puede ser en el pasado";
+    }
+  }
+
+  return {
+    valid: Object.keys(errors).length === 0,
+    errors,
+  };
+}
