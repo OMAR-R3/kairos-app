@@ -46,7 +46,8 @@ export type Visita = {
   fecha: string;
   hora_inicio: string;
   motivo: string;
-  estado: "pendiente" | "aprobada" | "cancelada" | "finalizada";
+  estado: "pendiente" | "aprobada" | "rechazada" | "cancelada" | "finalizada";
+  departamento?: { id: number; nombre: string };
 };
 
 export class SesionExpiradaError extends Error {
@@ -158,6 +159,18 @@ export const VisitasService = {
     const body = await res.json();
     const visita: Visita = body.data ?? body;
     return { visita, folio: generarFolio(visita.id) };
+  },
+
+  async obtenerHistorial(): Promise<Visita[]> {
+    const res = await peticionAutenticada("/api/visits/me");
+
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error ?? "No se pudieron cargar las visitas");
+    }
+
+    const body = await res.json();
+    return body.data ?? body;
   },
 
   async logout(): Promise<void> {
