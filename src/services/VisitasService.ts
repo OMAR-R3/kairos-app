@@ -161,7 +161,7 @@ export const VisitasService = {
     return { visita, folio: generarFolio(visita.id) };
   },
 
-  async obtenerHistorial(): Promise<Visita[]> {
+  async obtenerMisVisitas(): Promise<Visita[]> {
     const res = await peticionAutenticada("/api/visits/me");
 
     if (!res.ok) {
@@ -170,7 +170,8 @@ export const VisitasService = {
     }
 
     const body = await res.json();
-    return body.data ?? body;
+    const visitas = body.data ?? body;
+    return Array.isArray(visitas) ? visitas : [];
   },
 
   async logout(): Promise<void> {

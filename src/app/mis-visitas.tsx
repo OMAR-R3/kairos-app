@@ -1,3 +1,4 @@
+import { useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -7,7 +8,6 @@ import {
   Text,
   View,
 } from "react-native";
-import { useRouter } from "expo-router";
 import Screen from "../components/Screen";
 import {
   Departamento,
@@ -81,7 +81,7 @@ export default function MisVisitasScreen() {
     try {
       setCargando(true);
       const [listaVisitas, listaDepartamentos] = await Promise.all([
-        VisitasService.obtenerHistorial(),
+        VisitasService.obtenerMisVisitas(),
         VisitasService.obtenerDepartamentos(),
       ]);
 
