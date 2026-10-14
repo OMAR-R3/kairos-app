@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "expo-router";
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -7,7 +8,6 @@ import {
   Text,
   View,
 } from "react-native";
-import { useRouter } from "expo-router";
 import Screen from "../components/Screen";
 import {
   Departamento,
@@ -77,36 +77,48 @@ export default function MisVisitasScreen() {
   const [deptos, setDeptos] = useState<Record<string, string>>({});
   const [cargando, setCargando] = useState(true);
 
-  const cargarDatos = useCallback(async () => {
-    try {
-      setCargando(true);
-      const [listaVisitas, listaDepartamentos] = await Promise.all([
-        VisitasService.obtenerHistorial(),
-        VisitasService.obtenerDepartamentos(),
-      ]);
-
-      const mapa: Record<string, string> = {};
-      listaDepartamentos.forEach((d: Departamento) => {
-        mapa[String(d.id)] = d.nombre;
-      });
-
-      setDeptos(mapa);
-      setVisitas(listaVisitas);
-    } catch (err) {
-      if (err instanceof SesionExpiradaError) {
-        Alert.alert("Sesion expirada", err.message);
-        router.replace("/");
-        return;
-      }
-      Alert.alert("Error", err instanceof Error ? err.message : "No se pudieron cargar las visitas");
-    } finally {
-      setCargando(false);
-    }
-  }, [router]);
-
   useEffect(() => {
+    let cancelado = false;
+
+    async function cargarDatos() {
+      try {
+        const [listaVisitas, listaDepartamentos] = await Promise.all([
+          VisitasService.obtenerHistorial(),
+          VisitasService.obtenerDepartamentos(),
+        ]);
+
+        if (cancelado) return;
+
+        const mapa: Record<string, string> = {};
+        listaDepartamentos.forEach((d: Departamento) => {
+          mapa[String(d.id)] = d.nombre;
+        });
+
+        setDeptos(mapa);
+        setVisitas(listaVisitas);
+      } catch (err) {
+        if (cancelado) return;
+
+        if (err instanceof SesionExpiradaError) {
+          Alert.alert("Sesion expirada", err.message);
+          router.replace("/");
+          return;
+        }
+        Alert.alert(
+          "Error",
+          err instanceof Error ? err.message : "No se pudieron cargar las visitas"
+        );
+      } finally {
+        if (!cancelado) setCargando(false);
+      }
+    }
+
     cargarDatos();
-  }, [cargarDatos]);
+
+    return () => {
+      cancelado = true;
+    };
+  }, [router]);
 
   if (cargando) {
     return (
