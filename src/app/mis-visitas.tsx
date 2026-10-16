@@ -4,6 +4,7 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
+  Pressable,
   StyleSheet,
   Text,
   View,
@@ -76,55 +77,58 @@ export default function MisVisitasScreen() {
   const [visitas, setVisitas] = useState<Visita[]>([]);
   const [deptos, setDeptos] = useState<Record<string, string>>({});
   const [cargando, setCargando] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const cargarDatos = async () => {
+    setCargando(true);
+    setError(null);
+    try {
+      const [listaVisitas, listaDepartamentos] = await Promise.all([
+        VisitasService.obtenerHistorial(),
+        VisitasService.obtenerDepartamentos(),
+      ]);
+
+      const mapa: Record<string, string> = {};
+      listaDepartamentos.forEach((d: Departamento) => {
+        mapa[String(d.id)] = d.nombre;
+      });
+
+      setDeptos(mapa);
+      setVisitas(listaVisitas);
+    } catch (err) {
+      if (err instanceof SesionExpiradaError) {
+        Alert.alert("Sesion expirada", err.message);
+        router.replace("/");
+        return;
+      }
+      setError(err instanceof Error ? err.message : "No se pudieron cargar las visitas");
+    } finally {
+      setCargando(false);
+    }
+  };
 
   useEffect(() => {
-    let cancelado = false;
-
-    async function cargarDatos() {
-      try {
-        const [listaVisitas, listaDepartamentos] = await Promise.all([
-          VisitasService.obtenerHistorial(),
-          VisitasService.obtenerDepartamentos(),
-        ]);
-
-        if (cancelado) return;
-
-        const mapa: Record<string, string> = {};
-        listaDepartamentos.forEach((d: Departamento) => {
-          mapa[String(d.id)] = d.nombre;
-        });
-
-        setDeptos(mapa);
-        setVisitas(listaVisitas);
-      } catch (err) {
-        if (cancelado) return;
-
-        if (err instanceof SesionExpiradaError) {
-          Alert.alert("Sesion expirada", err.message);
-          router.replace("/");
-          return;
-        }
-        Alert.alert(
-          "Error",
-          err instanceof Error ? err.message : "No se pudieron cargar las visitas"
-        );
-      } finally {
-        if (!cancelado) setCargando(false);
-      }
-    }
-
     cargarDatos();
-
-    return () => {
-      cancelado = true;
-    };
-  }, [router]);
+  }, []);
 
   if (cargando) {
     return (
       <Screen title="Mis visitas" subtitle="Historial y estado de tus solicitudes">
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#171717" />
+        </View>
+      </Screen>
+    );
+  }
+
+  if (error) {
+    return (
+      <Screen title="Mis visitas" subtitle="Historial y estado de tus solicitudes">
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>{error}</Text>
+          <Pressable style={styles.retryButton} onPress={cargarDatos}>
+            <Text style={styles.retryButtonText}>Reintentar</Text>
+          </Pressable>
         </View>
       </Screen>
     );
@@ -212,5 +216,27 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 15,
     color: "#999999",
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 16,
+  },
+  errorText: {
+    fontSize: 15,
+    color: "#991B1B",
+    textAlign: "center",
+  },
+  retryButton: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 24,
+    backgroundColor: "#171717",
+  },
+  retryButtonText: {
+    color: "#FFFFFF",
+    fontWeight: "700",
+    fontSize: 15,
   },
 });
