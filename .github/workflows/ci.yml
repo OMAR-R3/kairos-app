@@ -83,8 +83,33 @@ jobs:
           key: modules-${{ hashFiles('package-lock.json') }}
       - name: Ejecutar pruebas con cobertura
         run: npm test -- --watchAll=false --passWithNoTests --coverage
+      - name: Guardar reporte de cobertura
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage/
 
-  # ── Fase 5: Build / Compilación ──
+  # ── Fase 5: Análisis de calidad (SonarQube) ──
+  sonar:
+    name: Analisis SonarQube
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Descargar reporte de cobertura
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage/
+      - name: Ejecutar analisis SonarQube
+        uses: SonarSource/sonarqube-scan-action@v4
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+
+  # ── Fase 6: Build / Compilación ──
   build:
     name: Build (Compilacion)
     runs-on: ubuntu-latest
@@ -102,11 +127,11 @@ jobs:
       - name: Exportar proyecto (web)
         run: npx expo export --platform web
 
-  # ── Fase 6: Notificación de resultados ──
+  # ── Fase 7: Notificación de resultados ──
   notify:
     name: Resultado del Pipeline
     runs-on: ubuntu-latest
-    needs: build
+    needs: [build, sonar]
     if: always()
     steps:
       - name: Resumen del pipeline
@@ -118,6 +143,25 @@ jobs:
           echo "| Lint (ESLint) | ${{ needs.build.result == 'success' && '✅' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| TypeScript | ${{ needs.build.result == 'success' && '✅' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Tests (Jest) | ${{ needs.build.result == 'success' && '✅' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| SonarQube | ${{ needs.sonar.result == 'success' && '✅' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Build | ${{ needs.build.result == 'success' && '✅' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Pipeline: ${{ needs.build.result == 'success' && 'EXITOSO ✅' || 'FALLIDO ❌' }}**" >> $GITHUB_STEP_SUMMARY
+          echo "**Pipeline: ${{ needs.build.result == 'success' && needs.sonar.result == 'success' && 'EXITOSO ✅' || 'FALLIDO ❌' }}**" >> $GITHUB_STEP_SUMMARY
+
+      - name: Notificar fallo por Discord
+        if: needs.build.result == 'failure' || needs.sonar.result == 'failure'
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          curl -H "Content-Type: application/json" \
+            -d "{\"embeds\":[{\"title\":\"❌ Pipeline fallido — Kairos App\",\"description\":\"**Rama:** ${{ github.ref_name }}\\n**Commit:** ${{ github.sha }}\\n**Autor:** ${{ github.actor }}\\n\\n[Ver ejecución](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})\",\"color\":15548997}]}" \
+            "$DISCORD_WEBHOOK_URL"
+
+      - name: Notificar exito por Discord
+        if: needs.build.result == 'success' && needs.sonar.result == 'success'
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          curl -H "Content-Type: application/json" \
+            -d "{\"embeds\":[{\"title\":\"✅ Pipeline exitoso — Kairos App\",\"description\":\"**Rama:** ${{ github.ref_name }}\\n**Commit:** ${{ github.sha }}\\n**Autor:** ${{ github.actor }}\\n\\n[Ver ejecución](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})\",\"color\":3066993}]}" \
+            "$DISCORD_WEBHOOK_URL"
