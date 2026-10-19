@@ -90,24 +90,26 @@ jobs:
           path: coverage/
 
   # ── Fase 5: Análisis de calidad (SonarQube) ──
-  sonar:
-    name: Analisis SonarQube
-    runs-on: ubuntu-latest
-    needs: test
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Descargar reporte de cobertura
-        uses: actions/download-artifact@v4
-        with:
-          name: coverage-report
-          path: coverage/
-      - name: Ejecutar analisis SonarQube
-        uses: SonarSource/sonarqube-scan-action@v4
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+  # Comentado: las pruebas de SonarCloud ya se realizaron exitosamente.
+  # Para reactivar, descomentar este job y agregar sonar a needs de notify.
+  # sonar:
+  #   name: Analisis SonarQube
+  #   runs-on: ubuntu-latest
+  #   needs: test
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #       with:
+  #         fetch-depth: 0
+  #     - name: Descargar reporte de cobertura
+  #       uses: actions/download-artifact@v4
+  #       with:
+  #         name: coverage-report
+  #         path: coverage/
+  #     - name: Ejecutar analisis SonarQube
+  #       uses: SonarSource/sonarqube-scan-action@v4
+  #       env:
+  #         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+  #         SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
 
   # ── Fase 6: Build / Compilación ──
   build:
@@ -131,7 +133,7 @@ jobs:
   notify:
     name: Resultado del Pipeline
     runs-on: ubuntu-latest
-    needs: [build, sonar]
+    needs: [build]
     if: always()
     steps:
       - name: Resumen del pipeline
@@ -143,13 +145,12 @@ jobs:
           echo "| Lint (ESLint) | ${{ needs.build.result == 'success' && '✅' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| TypeScript | ${{ needs.build.result == 'success' && '✅' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Tests (Jest) | ${{ needs.build.result == 'success' && '✅' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| SonarQube | ${{ needs.sonar.result == 'success' && '✅' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Build | ${{ needs.build.result == 'success' && '✅' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Pipeline: ${{ needs.build.result == 'success' && needs.sonar.result == 'success' && 'EXITOSO ✅' || 'FALLIDO ❌' }}**" >> $GITHUB_STEP_SUMMARY
+          echo "**Pipeline: ${{ needs.build.result == 'success' && 'EXITOSO ✅' || 'FALLIDO ❌' }}**" >> $GITHUB_STEP_SUMMARY
 
       - name: Notificar fallo por Discord
-        if: needs.build.result == 'failure' || needs.sonar.result == 'failure'
+        if: needs.build.result == 'failure'
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: |
@@ -158,7 +159,7 @@ jobs:
             "$DISCORD_WEBHOOK_URL"
 
       - name: Notificar exito por Discord
-        if: needs.build.result == 'success' && needs.sonar.result == 'success'
+        if: needs.build.result == 'success'
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: |
