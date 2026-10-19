@@ -1,9 +1,10 @@
 import { useRouter } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   FlatList,
+  Pressable,
   StyleSheet,
   Text,
   View,
@@ -76,10 +77,12 @@ export default function MisVisitasScreen() {
   const [visitas, setVisitas] = useState<Visita[]>([]);
   const [deptos, setDeptos] = useState<Record<string, string>>({});
   const [cargando, setCargando] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const cargarDatos = useCallback(async () => {
+  const cargarDatos = async () => {
+    setCargando(true);
+    setError(null);
     try {
-      setCargando(true);
       const [listaVisitas, listaDepartamentos] = await Promise.all([
         VisitasService.obtenerMisVisitas(),
         VisitasService.obtenerDepartamentos(),
@@ -98,21 +101,34 @@ export default function MisVisitasScreen() {
         router.replace("/");
         return;
       }
-      Alert.alert("Error", err instanceof Error ? err.message : "No se pudieron cargar las visitas");
+      setError(err instanceof Error ? err.message : "No se pudieron cargar las visitas");
     } finally {
       setCargando(false);
     }
-  }, [router]);
+  };
 
   useEffect(() => {
     cargarDatos();
-  }, [cargarDatos]);
+  }, []);
 
   if (cargando) {
     return (
       <Screen title="Mis visitas" subtitle="Historial y estado de tus solicitudes">
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#171717" />
+        </View>
+      </Screen>
+    );
+  }
+
+  if (error) {
+    return (
+      <Screen title="Mis visitas" subtitle="Historial y estado de tus solicitudes">
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>{error}</Text>
+          <Pressable style={styles.retryButton} onPress={cargarDatos}>
+            <Text style={styles.retryButtonText}>Reintentar</Text>
+          </Pressable>
         </View>
       </Screen>
     );
@@ -200,5 +216,27 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 15,
     color: "#999999",
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 16,
+  },
+  errorText: {
+    fontSize: 15,
+    color: "#991B1B",
+    textAlign: "center",
+  },
+  retryButton: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 24,
+    backgroundColor: "#171717",
+  },
+  retryButtonText: {
+    color: "#FFFFFF",
+    fontWeight: "700",
+    fontSize: 15,
   },
 });
