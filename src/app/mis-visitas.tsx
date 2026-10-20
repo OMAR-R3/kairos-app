@@ -1,5 +1,5 @@
 import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -79,7 +79,7 @@ export default function MisVisitasScreen() {
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const cargarDatos = async () => {
+  const cargarDatos = useCallback(async () =>{
     setCargando(true);
     setError(null);
     try {
@@ -105,11 +105,21 @@ export default function MisVisitasScreen() {
     } finally {
       setCargando(false);
     }
-  };
+  },[router]);
 
   useEffect(() => {
-    cargarDatos();
-  }, []);
+  let activo = true;
+
+  Promise.resolve().then(() => {
+    if (activo) {
+      void cargarDatos();
+    }
+  });
+
+  return () => {
+    activo = false;
+  };
+}, [cargarDatos]);
 
   if (cargando) {
     return (
