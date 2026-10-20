@@ -39,8 +39,19 @@
     "typescript": "~6.0.3"
   },
   "jest": {
-    "preset": "jest-expo"
-  },
+  "preset": "jest-expo",
+  "collectCoverageFrom": [
+    "src/**/*.{ts,tsx}",
+    "!src/**/*.d.ts",
+    "!src/**/__tests__/**",
+    "!src/**/*.test.{ts,tsx}"
+  ],
+  "coverageReporters": [
+    "text",
+    "lcov",
+    "json"
+  ]
+},
   "scripts": {
     "start": "expo start",
     "reset-project": "node ./scripts/reset-project.js",
