@@ -108,7 +108,7 @@ export default function MisVisitasScreen() {
   }, [router]);
 
   useEffect(() => {
-    cargarDatos();
+    cargarDatos(); // eslint-disable-line react-hooks/set-state-in-effect
   }, [cargarDatos]);
 
   if (cargando) {
