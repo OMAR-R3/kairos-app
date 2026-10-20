@@ -110,9 +110,9 @@ export default function MisVisitasScreen() {
   useEffect(() => {
   let activo = true;
 
-  Promise.resolve().then(() => {
+  void Promise.resolve().then(() => {
     if (activo) {
-      void cargarDatos();
+      return cargarDatos();
     }
   });
 
