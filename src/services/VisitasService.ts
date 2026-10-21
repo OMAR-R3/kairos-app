@@ -57,6 +57,21 @@ export class SesionExpiradaError extends Error {
   }
 }
 
+export type DetalleVisita = Pick<
+  Visita,
+  "id" | "estado" | "fecha" | "hora_inicio" | "motivo"
+> & {
+  folio: string;
+  departamento: Departamento | null;
+};
+
+export class VisitaNoEncontradaError extends Error {
+  constructor() {
+    super("No se encontró la visita solicitada.");
+    this.name = "VisitaNoEncontradaError";
+  }
+}
+
 export const generarFolio = (id: number) => `KV-${String(id).padStart(6, "0")}`;
 
 // Revisa la fecha de expiracion del JWT sin llamar al servidor.
@@ -172,6 +187,25 @@ export const VisitasService = {
     const body = await res.json();
     const visitas = body.data ?? body;
     return Array.isArray(visitas) ? visitas : [];
+  },
+
+  async obtenerDetalleVisita(id: string): Promise<DetalleVisita> {
+    if (typeof id !== "string" || !/^\d+$/.test(id) || !/[1-9]/.test(id)) {
+      throw new Error("El identificador de la visita no es válido.");
+    }
+
+    const res = await peticionAutenticada(`/api/visits/me/${encodeURIComponent(id)}`);
+    if (res.status === 404) throw new VisitaNoEncontradaError();
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error ?? "No fue posible cargar los detalles de la visita. Inténtalo de nuevo.");
+    }
+
+    const body: { success: boolean; data: DetalleVisita | null } = await res.json();
+    if (!body.success || !body.data) {
+      throw new Error("No fue posible cargar los detalles de la visita. Inténtalo de nuevo.");
+    }
+    return body.data;
   },
 
   async logout(): Promise<void> {

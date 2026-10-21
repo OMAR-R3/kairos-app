@@ -1,4 +1,4 @@
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -9,11 +9,10 @@ import {
   Text,
   View,
 } from "react-native";
-import { useRouter } from "expo-router";
 import {
-  Departamento,
+  DetalleVisita,
   SesionExpiradaError,
-  Visita,
+  VisitaNoEncontradaError,
   VisitasService,
 } from "../../services/VisitasService";
 
@@ -54,39 +53,24 @@ function CampoInfo({ label, value }: CampoInfoProps) {
 }
 
 export default function DetalleVisitaScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id } = useLocalSearchParams<{ id?: string | string[] }>();
   const router = useRouter();
-  const [visita, setVisita] = useState<Visita | null>(null);
-  const [nombreDepto, setNombreDepto] = useState("");
+  const [visita, setVisita] = useState<DetalleVisita | null>(null);
   const [cargando, setCargando] = useState(true);
 
   useEffect(() => {
+    let activo = true;
     (async () => {
       try {
-        const [historial, departamentos] = await Promise.all([
-          VisitasService.obtenerHistorial(),
-          VisitasService.obtenerDepartamentos(),
-        ]);
-
-        const encontrada = historial.find((v) => String(v.id) === id);
-        if (!encontrada) {
-          Alert.alert("Error", "No se encontro la visita");
-          router.back();
-          return;
+        if (typeof id !== "string") {
+          throw new Error("El identificador de la visita no es válido.");
         }
-
-        const mapa: Record<string, string> = {};
-        departamentos.forEach((d: Departamento) => {
-          mapa[String(d.id)] = d.nombre;
-        });
-
-        setVisita(encontrada);
-        setNombreDepto(
-          encontrada.departamento?.nombre ??
-            mapa[String(encontrada.depto_id)] ??
-            "Departamento desconocido"
-        );
+        setCargando(true);
+        setVisita(null);
+        const detalle = await VisitasService.obtenerDetalleVisita(id);
+        if (activo) setVisita(detalle);
       } catch (err) {
+        if (!activo) return;
         if (err instanceof SesionExpiradaError) {
           Alert.alert("Sesion expirada", err.message);
           router.replace("/");
@@ -94,14 +78,19 @@ export default function DetalleVisitaScreen() {
         }
         Alert.alert(
           "Error",
-          err instanceof Error ? err.message : "No se pudo cargar la visita"
+          err instanceof VisitaNoEncontradaError
+            ? err.message
+            : err instanceof TypeError
+              ? "No fue posible conectar con el servidor. Comprueba tu conexión e inténtalo nuevamente."
+              : err instanceof Error ? err.message : "No fue posible cargar los detalles de la visita. Inténtalo de nuevo."
         );
         router.back();
       } finally {
-        setCargando(false);
+        if (activo) setCargando(false);
       }
     })();
-  }, [id]);
+    return () => { activo = false; };
+  }, [id, router]);
 
   if (cargando) {
     return (
@@ -135,7 +124,7 @@ export default function DetalleVisitaScreen() {
 
         <View style={styles.separator} />
 
-        <CampoInfo label="Persona a visitar" value={nombreDepto} />
+        <CampoInfo label="Persona a visitar" value={visita.departamento?.nombre ?? "Departamento desconocido"} />
         <CampoInfo label="Fecha" value={formatearFecha(visita.fecha)} />
         <CampoInfo label="Hora" value={formatearHora(visita.hora_inicio)} />
         <CampoInfo
