@@ -9,6 +9,7 @@ import {
   Text,
   View,
 } from "react-native";
+import type { Href } from "expo-router";
 import Screen from "../components/Screen";
 import {
   Departamento,
@@ -38,24 +39,28 @@ function formatearFecha(fechaISO: string): string {
 function VisitaCard({
   visita,
   departamento,
+  onPress,
 }: {
   visita: Visita;
   departamento: string;
+  onPress: () => void;
 }) {
   const config = ESTADO_CONFIG[visita.estado] ?? ESTADO_DEFAULT;
 
   return (
-    <View style={[styles.card, { borderLeftColor: config.border }]}>
-      <Text style={styles.departamento}>{departamento}</Text>
-      <Text style={styles.fecha}>{formatearFecha(visita.fecha)}</Text>
-      <Text style={styles.hora}>{visita.hora_inicio}</Text>
-      {visita.motivo ? <Text style={styles.motivo}>{visita.motivo}</Text> : null}
-      <View style={[styles.badge, { backgroundColor: config.bg }]}>
-        <Text style={[styles.badgeText, { color: config.text }]}>
-          {config.label}
-        </Text>
+    <Pressable onPress={onPress}>
+      <View style={[styles.card, { borderLeftColor: config.border }]}>
+        <Text style={styles.departamento}>{departamento}</Text>
+        <Text style={styles.fecha}>{formatearFecha(visita.fecha)}</Text>
+        <Text style={styles.hora}>{visita.hora_inicio}</Text>
+        {visita.motivo ? <Text style={styles.motivo}>{visita.motivo}</Text> : null}
+        <View style={[styles.badge, { backgroundColor: config.bg }]}>
+          <Text style={[styles.badgeText, { color: config.text }]}>
+            {config.label}
+          </Text>
+        </View>
       </View>
-    </View>
+    </Pressable>
   );
 }
 
@@ -143,6 +148,9 @@ export default function MisVisitasScreen() {
           <VisitaCard
             visita={item}
             departamento={getNombreDepto(item, deptos)}
+            onPress={() =>
+              router.push(`/detalle-visita/${item.id}` as Href)
+            }
           />
         )}
         ListEmptyComponent={ListaVacia}
