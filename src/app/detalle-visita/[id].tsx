@@ -60,7 +60,7 @@ export default function DetalleVisitaScreen() {
 
   useEffect(() => {
     let activo = true;
-    (async () => {
+    void (async () => {
       try {
         if (typeof id !== "string") {
           throw new Error("El identificador de la visita no es válido.");
