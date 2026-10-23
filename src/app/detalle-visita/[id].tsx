@@ -143,16 +143,15 @@ export default function DetalleVisitaScreen() {
 
         <View style={styles.separator} />
 
-        <CampoInfo label="Persona a visitar" value={visita.departamento?.nombre ?? "Departamento desconocido"} />
+        <CampoInfo label="Folio" value={visita.folio} />
+        <CampoInfo label="Departamento" value={visita.departamento?.nombre ?? "Departamento desconocido"} />
         <CampoInfo label="Fecha" value={formatearFecha(visita.fecha)} />
         <CampoInfo label="Hora" value={formatearHora(visita.hora_inicio)} />
         <CampoInfo
           label="Motivo"
           value={visita.motivo || "Sin motivo especificado"}
         />
-        <Pressable style={styles.qrButton} onPress={() => {}}>
-          <Text style={styles.qrButtonText}>Ver codigo QR</Text>
-        </Pressable>
+        {/* Sprint 7: aquí va el botón "Ver código QR" (HU-06) */}
       </ScrollView>
     </View>
   );
