@@ -54,3 +54,6 @@ example
 .claude/
 CLAUDE.md
 AGENTS.md
+
+# Jest - Code Coverage
+coverage/

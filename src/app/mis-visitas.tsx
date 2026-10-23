@@ -1,13 +1,15 @@
 import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   FlatList,
+  Pressable,
   StyleSheet,
   Text,
   View,
 } from "react-native";
+import type { Href } from "expo-router";
 import Screen from "../components/Screen";
 import {
   Departamento,
@@ -37,24 +39,28 @@ function formatearFecha(fechaISO: string): string {
 function VisitaCard({
   visita,
   departamento,
+  onPress,
 }: {
   visita: Visita;
   departamento: string;
+  onPress: () => void;
 }) {
   const config = ESTADO_CONFIG[visita.estado] ?? ESTADO_DEFAULT;
 
   return (
-    <View style={[styles.card, { borderLeftColor: config.border }]}>
-      <Text style={styles.departamento}>{departamento}</Text>
-      <Text style={styles.fecha}>{formatearFecha(visita.fecha)}</Text>
-      <Text style={styles.hora}>{visita.hora_inicio}</Text>
-      {visita.motivo ? <Text style={styles.motivo}>{visita.motivo}</Text> : null}
-      <View style={[styles.badge, { backgroundColor: config.bg }]}>
-        <Text style={[styles.badgeText, { color: config.text }]}>
-          {config.label}
-        </Text>
+    <Pressable onPress={onPress}>
+      <View style={[styles.card, { borderLeftColor: config.border }]}>
+        <Text style={styles.departamento}>{departamento}</Text>
+        <Text style={styles.fecha}>{formatearFecha(visita.fecha)}</Text>
+        <Text style={styles.hora}>{visita.hora_inicio}</Text>
+        {visita.motivo ? <Text style={styles.motivo}>{visita.motivo}</Text> : null}
+        <View style={[styles.badge, { backgroundColor: config.bg }]}>
+          <Text style={[styles.badgeText, { color: config.text }]}>
+            {config.label}
+          </Text>
+        </View>
       </View>
-    </View>
+    </Pressable>
   );
 }
 
@@ -76,55 +82,68 @@ export default function MisVisitasScreen() {
   const [visitas, setVisitas] = useState<Visita[]>([]);
   const [deptos, setDeptos] = useState<Record<string, string>>({});
   const [cargando, setCargando] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const cargarDatos = useCallback(async () =>{
+    setCargando(true);
+    setError(null);
+    try {
+      const [listaVisitas, listaDepartamentos] = await Promise.all([
+        VisitasService.obtenerMisVisitas(),
+        VisitasService.obtenerDepartamentos(),
+      ]);
+
+      const mapa: Record<string, string> = {};
+      listaDepartamentos.forEach((d: Departamento) => {
+        mapa[String(d.id)] = d.nombre;
+      });
+
+      setDeptos(mapa);
+      setVisitas(listaVisitas);
+    } catch (err) {
+      if (err instanceof SesionExpiradaError) {
+        Alert.alert("Sesion expirada", err.message);
+        router.replace("/");
+        return;
+      }
+      setError(err instanceof Error ? err.message : "No se pudieron cargar las visitas");
+    } finally {
+      setCargando(false);
+    }
+  },[router]);
 
   useEffect(() => {
-    let cancelado = false;
+  let activo = true;
 
-    async function cargarDatos() {
-      try {
-        const [listaVisitas, listaDepartamentos] = await Promise.all([
-          VisitasService.obtenerHistorial(),
-          VisitasService.obtenerDepartamentos(),
-        ]);
-
-        if (cancelado) return;
-
-        const mapa: Record<string, string> = {};
-        listaDepartamentos.forEach((d: Departamento) => {
-          mapa[String(d.id)] = d.nombre;
-        });
-
-        setDeptos(mapa);
-        setVisitas(listaVisitas);
-      } catch (err) {
-        if (cancelado) return;
-
-        if (err instanceof SesionExpiradaError) {
-          Alert.alert("Sesion expirada", err.message);
-          router.replace("/");
-          return;
-        }
-        Alert.alert(
-          "Error",
-          err instanceof Error ? err.message : "No se pudieron cargar las visitas"
-        );
-      } finally {
-        if (!cancelado) setCargando(false);
-      }
+  void Promise.resolve().then(() => {
+    if (activo) {
+      return cargarDatos();
     }
+  });
 
-    cargarDatos();
-
-    return () => {
-      cancelado = true;
-    };
-  }, [router]);
+  return () => {
+    activo = false;
+  };
+}, [cargarDatos]);
 
   if (cargando) {
     return (
       <Screen title="Mis visitas" subtitle="Historial y estado de tus solicitudes">
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#171717" />
+        </View>
+      </Screen>
+    );
+  }
+
+  if (error) {
+    return (
+      <Screen title="Mis visitas" subtitle="Historial y estado de tus solicitudes">
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>{error}</Text>
+          <Pressable style={styles.retryButton} onPress={cargarDatos}>
+            <Text style={styles.retryButtonText}>Reintentar</Text>
+          </Pressable>
         </View>
       </Screen>
     );
@@ -139,6 +158,9 @@ export default function MisVisitasScreen() {
           <VisitaCard
             visita={item}
             departamento={getNombreDepto(item, deptos)}
+            onPress={() =>
+              router.push(`/detalle-visita/${item.id}` as Href)
+            }
           />
         )}
         ListEmptyComponent={ListaVacia}
@@ -212,5 +234,27 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 15,
     color: "#999999",
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 16,
+  },
+  errorText: {
+    fontSize: 15,
+    color: "#991B1B",
+    textAlign: "center",
+  },
+  retryButton: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 24,
+    backgroundColor: "#171717",
+  },
+  retryButtonText: {
+    color: "#FFFFFF",
+    fontWeight: "700",
+    fontSize: 15,
   },
 });
