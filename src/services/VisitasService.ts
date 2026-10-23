@@ -92,14 +92,19 @@ async function peticionAutenticada(
 ): Promise<Response> {
   const token = await SecureStore.getItemAsync(TOKEN_KEY);
 
-  const res = await fetch(`${API_URL}${ruta}`, {
-    method: opciones.method ?? "GET",
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    body: opciones.body ? JSON.stringify(opciones.body) : undefined,
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}${ruta}`, {
+      method: opciones.method ?? "GET",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: opciones.body ? JSON.stringify(opciones.body) : undefined,
+    });
+  } catch {
+    throw new Error("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
+  }
 
   if (res.status === 401) {
     await SecureStore.deleteItemAsync(TOKEN_KEY);

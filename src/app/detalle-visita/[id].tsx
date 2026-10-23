@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -57,46 +57,65 @@ export default function DetalleVisitaScreen() {
   const router = useRouter();
   const [visita, setVisita] = useState<DetalleVisita | null>(null);
   const [cargando, setCargando] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const cargarDetalle = useCallback(async () => {
+    if (typeof id !== "string") {
+      setError("El identificador de la visita no es válido.");
+      setCargando(false);
+      return;
+    }
+    setCargando(true);
+    setError(null);
+    setVisita(null);
+    try {
+      const detalle = await VisitasService.obtenerDetalleVisita(id);
+      setVisita(detalle);
+    } catch (err) {
+      if (err instanceof SesionExpiradaError) {
+        Alert.alert("Sesion expirada", err.message);
+        router.replace("/");
+        return;
+      }
+      if (err instanceof VisitaNoEncontradaError) {
+        Alert.alert("Error", err.message);
+        router.back();
+        return;
+      }
+      setError(
+        err instanceof Error ? err.message : "No fue posible cargar los detalles de la visita. Inténtalo de nuevo."
+      );
+    } finally {
+      setCargando(false);
+    }
+  }, [id, router]);
 
   useEffect(() => {
     let activo = true;
-    void (async () => {
-      try {
-        if (typeof id !== "string") {
-          throw new Error("El identificador de la visita no es válido.");
-        }
-        setCargando(true);
-        setVisita(null);
-        const detalle = await VisitasService.obtenerDetalleVisita(id);
-        if (activo) setVisita(detalle);
-      } catch (err) {
-        if (!activo) return;
-        if (err instanceof SesionExpiradaError) {
-          Alert.alert("Sesion expirada", err.message);
-          router.replace("/");
-          return;
-        }
-        Alert.alert(
-          "Error",
-          err instanceof VisitaNoEncontradaError
-            ? err.message
-            : err instanceof TypeError
-              ? "No fue posible conectar con el servidor. Comprueba tu conexión e inténtalo nuevamente."
-              : err instanceof Error ? err.message : "No fue posible cargar los detalles de la visita. Inténtalo de nuevo."
-        );
-        router.back();
-      } finally {
-        if (activo) setCargando(false);
-      }
-    })();
+    void Promise.resolve().then(() => {
+      if (activo) return cargarDetalle();
+    });
     return () => { activo = false; };
-  }, [id, router]);
+  }, [cargarDetalle]);
 
   if (cargando) {
     return (
       <View style={styles.container}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#0D9488" />
+        </View>
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>{error}</Text>
+          <Pressable style={styles.retryButton} onPress={cargarDetalle}>
+            <Text style={styles.retryButtonText}>Reintentar</Text>
+          </Pressable>
         </View>
       </View>
     );
@@ -205,5 +224,28 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontWeight: "700",
     fontSize: 16,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 24,
+    gap: 16,
+  },
+  errorText: {
+    fontSize: 15,
+    color: "#991B1B",
+    textAlign: "center",
+  },
+  retryButton: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 24,
+    backgroundColor: "#171717",
+  },
+  retryButtonText: {
+    color: "#FFFFFF",
+    fontWeight: "700",
+    fontSize: 15,
   },
 });
