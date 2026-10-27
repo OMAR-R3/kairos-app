@@ -57,3 +57,5 @@ AGENTS.md
 
 # Jest - Code Coverage
 coverage/
+
+*-firebase-adminsdk-*.json

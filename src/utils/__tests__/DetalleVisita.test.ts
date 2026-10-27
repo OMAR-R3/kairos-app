@@ -77,10 +77,9 @@ describe("obtenerDetalleVisita", () => {
     await expect(VisitasService.obtenerDetalleVisita("123")).rejects.toThrow("No fue posible cargar los detalles");
   });
 
-  it("propaga el error de red existente", async () => {
-    const error = new TypeError("Network request failed");
-    mockFetch.mockRejectedValue(error);
-    await expect(VisitasService.obtenerDetalleVisita("123")).rejects.toBe(error);
+  it("muestra un mensaje amigable si no hay conexión", async () => {
+    mockFetch.mockRejectedValue(new TypeError("Network request failed"));
+    await expect(VisitasService.obtenerDetalleVisita("123")).rejects.toThrow("No se pudo conectar");
     expect(SecureStore.deleteItemAsync).not.toHaveBeenCalled();
   });
 
