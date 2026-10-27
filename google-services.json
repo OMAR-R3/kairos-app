@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "104127656588",
+    "project_id": "kairos-visitas",
+    "storage_bucket": "kairos-visitas.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:104127656588:android:7f5861f3767555767541a9",
+        "android_client_info": {
+          "package_name": "org.duckdns.kairos.visitas"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB6c4GxhGw3srhKU-QSnBPbsoTz9Yel1vs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
