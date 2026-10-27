@@ -94,6 +94,7 @@ jobs:
     name: Analisis SonarQube
     runs-on: ubuntu-latest
     needs: test
+    if: false # desactivado: token de SonarCloud caducado
     steps:
       - uses: actions/checkout@v4
         with:
@@ -131,7 +132,7 @@ jobs:
   notify:
     name: Resultado del Pipeline
     runs-on: ubuntu-latest
-    needs: [build, sonar]
+    needs: [lint, typecheck, test, build]
     if: always()
     steps:
       - name: Resumen del pipeline
@@ -140,16 +141,16 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Fase | Estado |" >> $GITHUB_STEP_SUMMARY
           echo "|------|--------|" >> $GITHUB_STEP_SUMMARY
-          echo "| Lint (ESLint) | ${{ needs.build.result == 'success' && '✅' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| TypeScript | ${{ needs.build.result == 'success' && '✅' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Tests (Jest) | ${{ needs.build.result == 'success' && '✅' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| SonarQube | ${{ needs.sonar.result == 'success' && '✅' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Lint (ESLint) | ${{ needs.lint.result == 'success' && '✅' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| TypeScript | ${{ needs.typecheck.result == 'success' && '✅' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Tests (Jest) | ${{ needs.test.result == 'success' && '✅' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| SonarQube | ⏸️ Desactivado |" >> $GITHUB_STEP_SUMMARY
           echo "| Build | ${{ needs.build.result == 'success' && '✅' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Pipeline: ${{ needs.build.result == 'success' && needs.sonar.result == 'success' && 'EXITOSO ✅' || 'FALLIDO ❌' }}**" >> $GITHUB_STEP_SUMMARY
+          echo "**Pipeline: ${{ needs.build.result == 'success' && 'EXITOSO ✅' || 'FALLIDO ❌' }}**" >> $GITHUB_STEP_SUMMARY
 
       - name: Notificar fallo por Discord
-        if: needs.build.result == 'failure' || needs.sonar.result == 'failure'
+        if: contains(needs.*.result, 'failure')
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: |
@@ -158,7 +159,7 @@ jobs:
             "$DISCORD_WEBHOOK_URL"
 
       - name: Notificar exito por Discord
-        if: needs.build.result == 'success' && needs.sonar.result == 'success'
+        if: needs.build.result == 'success'
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: |
