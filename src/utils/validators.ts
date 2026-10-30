@@ -67,23 +67,23 @@ export function validateVisitaForm(form: VisitaForm) {
   if (!form.fecha) {
     errors.fecha = "La fecha es obligatoria";
   } else if (!FECHA_REGEX.test(form.fecha)) {
-    errors.fecha = "Formato invalido (AAAA-MM-DD)";
+    errors.fecha = "Formato inválido (AAAA-MM-DD)";
   } else {
     const date = new Date(form.fecha + "T00:00:00");
     if (isNaN(date.getTime())) {
-      errors.fecha = "Fecha no valida";
+      errors.fecha = "Fecha no válida";
     } else if (date < new Date(new Date().toDateString())) {
       errors.fecha = "La fecha no puede ser en el pasado";
     } else {
       const day = date.getDay();
-      if (day === 0 || day === 6) errors.fecha = "Solo se permiten dias de lunes a viernes";
+      if (day === 0 || day === 6) errors.fecha = "Solo se permiten días de lunes a viernes";
     }
   }
 
   if (!form.horaLlegada) {
     errors.horaLlegada = "La hora es obligatoria";
   } else if (!HORA_REGEX.test(form.horaLlegada)) {
-    errors.horaLlegada = "Formato invalido (HH:MM)";
+    errors.horaLlegada = "Formato inválido (HH:MM)";
   }
 
   if (!form.motivo.trim()) {
@@ -121,25 +121,25 @@ export function validateRegistroForm(form: RegistroForm) {
   const apellidoPaterno = form.apellidoPaterno.trim();
   const apellidoMaterno = form.apellidoMaterno.trim();
   const correo = form.correo.trim().toLowerCase();
-  const telefono = form.telefono.replace(/\D/g, ""); // solo digitos
+  const telefono = form.telefono.replace(/\D/g, ""); // solo dígitos
 
   if (!nombre) errors.nombre = "Escribe tu nombre";
   if (!apellidoPaterno) errors.apellidoPaterno = "Escribe tu apellido paterno";
 
   if (!correo) errors.correo = "Escribe tu correo";
-  else if (!EMAIL_REGEX.test(correo)) errors.correo = "El correo no es valido";
+  else if (!EMAIL_REGEX.test(correo)) errors.correo = "El correo no es válido";
 
-  // Quitar este bloque si el backend deja el telefono como opcional
-  if (!telefono) errors.telefono = "Escribe tu telefono";
-  else if (telefono.length !== 10) errors.telefono = "Debe tener 10 digitos";
+  // Quitar este bloque si el backend deja el teléfono como opcional
+  if (!telefono) errors.telefono = "Escribe tu teléfono";
+  else if (telefono.length !== 10) errors.telefono = "Debe tener 10 dígitos";
 
-  if (!form.password) errors.password = "Escribe una contrasena";
+  if (!form.password) errors.password = "Escribe una contraseña";
   else if (form.password.length < 8)
-    errors.password = "Minimo 8 caracteres";
+    errors.password = "Mínimo 8 caracteres";
 
-  if (!form.confirmarPassword) errors.confirmarPassword = "Confirma tu contrasena";
+  if (!form.confirmarPassword) errors.confirmarPassword = "Confirma tu contraseña";
   else if (form.password !== form.confirmarPassword)
-    errors.confirmarPassword = "Las contrasenas no coinciden";
+    errors.confirmarPassword = "Las contraseñas no coinciden";
 
   return {
     valid: Object.keys(errors).length === 0,

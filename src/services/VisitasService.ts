@@ -1,4 +1,4 @@
-// Facade: unico punto por el que la app habla con la API de Kairos (Next.js).
+// Facade: único punto por el que la app habla con la API de Kairos (Next.js).
 // La app nunca habla directo con Supabase.
 
 import * as SecureStore from "expo-secure-store";
@@ -52,7 +52,7 @@ export type Visita = {
 
 export class SesionExpiradaError extends Error {
   constructor() {
-    super("Tu sesion expiro, inicia sesion de nuevo");
+    super("Tu sesión expiró, inicia sesión de nuevo");
     this.name = "SesionExpiradaError";
   }
 }
@@ -74,7 +74,7 @@ export class VisitaNoEncontradaError extends Error {
 
 export const generarFolio = (id: number) => `KV-${String(id).padStart(6, "0")}`;
 
-// Revisa la fecha de expiracion del JWT sin llamar al servidor.
+// Revisa la fecha de expiración del JWT sin llamar al servidor.
 function tokenVigente(token: string): boolean {
   try {
     const parte = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
@@ -124,7 +124,7 @@ export const VisitasService = {
     });
 
     if (res.status === 409) throw new Error("Ya existe una cuenta con ese correo");
-    if (res.status === 429) throw new Error("Demasiados intentos, intenta mas tarde");
+    if (res.status === 429) throw new Error("Demasiados intentos, intenta más tarde");
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
       throw new Error(body.error ?? "No se pudo crear la cuenta");
@@ -138,11 +138,11 @@ export const VisitasService = {
       body: JSON.stringify(datos),
     });
 
-    if (res.status === 401) throw new Error("Correo o contrasena incorrectos");
-    if (res.status === 429) throw new Error("Demasiados intentos, intenta mas tarde");
+    if (res.status === 401) throw new Error("Correo o contraseña incorrectos");
+    if (res.status === 429) throw new Error("Demasiados intentos, intenta más tarde");
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
-      throw new Error(body.error ?? "No se pudo iniciar sesion");
+      throw new Error(body.error ?? "No se pudo iniciar sesión");
     }
 
     const { token, visitante } = await res.json();
@@ -170,7 +170,7 @@ export const VisitasService = {
     });
 
     if (res.status === 409) throw new Error("Ya tienes una visita registrada con esos datos");
-    if (res.status === 429) throw new Error("Demasiados intentos, intenta mas tarde");
+    if (res.status === 429) throw new Error("Demasiados intentos, intenta más tarde");
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
       throw new Error(body.error ?? "No se pudo agendar la visita");
@@ -220,7 +220,7 @@ export const VisitasService = {
   async getToken(): Promise<string | null> {
     return SecureStore.getItemAsync(TOKEN_KEY);
   },
-  // true si hay un token guardado y todavia no expira
+  // true si hay un token guardado y todavía no expira
   async obtenerDatosSesion(): Promise<Record<string, unknown> | null> {
     try {
       const token = await SecureStore.getItemAsync(TOKEN_KEY);
