@@ -51,7 +51,7 @@ export default function CrearCuentaScreen() {
     setLoading(true);
     try {
       await VisitasService.registrarVisitante(values);
-      Alert.alert("Cuenta creada", "Ya puedes iniciar sesion con tu correo.", [
+      Alert.alert("Cuenta creada", "Ya puedes iniciar sesión con tu correo.", [
         // Regresa a Login. Si en Figma va directo a Inicio, cambiar a "/inicio"
         { text: "Aceptar", onPress: () => router.replace("/") },
       ]);
@@ -64,7 +64,7 @@ export default function CrearCuentaScreen() {
   };
 
   return (
-    <Screen title="Crear cuenta" subtitle="Registrate para consultar tus visitas">
+    <Screen title="Crear cuenta" subtitle="Regístrate para consultar tus visitas">
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         style={{ flex: 1 }}
@@ -80,13 +80,13 @@ export default function CrearCuentaScreen() {
             autoCapitalize="words" />
           <Campo label="Correo" value={form.correo} onChangeText={setCampo("correo")}
             error={errors.correo} keyboardType="email-address" />
-          {/* Quitar este Campo si el backend deja el telefono opcional */}
-          <Campo label="Telefono (10 digitos)" value={form.telefono}
+          {/* Quitar este Campo si el backend deja el teléfono opcional */}
+          <Campo label="Teléfono (10 dígitos)" value={form.telefono}
             onChangeText={setCampo("telefono")} error={errors.telefono}
             keyboardType="phone-pad" maxLength={14} />
-          <Campo label="Contrasena" value={form.password} onChangeText={setCampo("password")}
+          <Campo label="Contraseña" value={form.password} onChangeText={setCampo("password")}
             error={errors.password} secure />
-          <Campo label="Confirmar contrasena" value={form.confirmarPassword}
+          <Campo label="Confirmar contraseña" value={form.confirmarPassword}
             onChangeText={setCampo("confirmarPassword")} error={errors.confirmarPassword} secure />
 
           <Pressable

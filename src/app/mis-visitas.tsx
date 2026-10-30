@@ -67,7 +67,7 @@ function VisitaCard({
 function ListaVacia() {
   return (
     <View style={styles.emptyContainer}>
-      <Text style={styles.emptyText}>Aun no tienes visitas</Text>
+      <Text style={styles.emptyText}>Aún no tienes visitas</Text>
     </View>
   );
 }
@@ -102,7 +102,7 @@ export default function MisVisitasScreen() {
       setVisitas(listaVisitas);
     } catch (err) {
       if (err instanceof SesionExpiradaError) {
-        Alert.alert("Sesion expirada", err.message);
+        Alert.alert("Sesión expirada", err.message);
         router.replace("/");
         return;
       }
