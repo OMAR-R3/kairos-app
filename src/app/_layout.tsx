@@ -1,7 +1,7 @@
 import { Stack } from "expo-router";
 
 // Navegador raiz de la app. Cada pantalla de Figma corresponde a una
-// ruta aqui. Sin tabs porque el recorrido es lineal (ver prototipo
+// ruta aquí. Sin tabs porque el recorrido es lineal (ver prototipo
 // de Figma: Login -> Inicio -> Solicitar visita -> ... -> QR).
 export default function RootLayout() {
   return (

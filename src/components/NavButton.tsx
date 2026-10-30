@@ -7,8 +7,8 @@ type NavButtonProps = {
   dark?: boolean;
 };
 
-// Boton reutilizable para las conexiones de navegacion entre pantallas.
-// Coincide con los botones "Iniciar sesion", "Enviar solicitud", etc.
+// Botón reutilizable para las conexiones de navegación entre pantallas.
+// Coincide con los botones "Iniciar sesión", "Enviar solicitud", etc.
 // del prototipo de Figma.
 export default function NavButton({ label, href, dark = true }: NavButtonProps) {
   const router = useRouter();

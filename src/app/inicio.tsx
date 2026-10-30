@@ -16,14 +16,14 @@ export default function InicioScreen() {
       await VisitasService.logout();
       router.replace("/");
     } catch {
-      Alert.alert("Error", "No se pudo cerrar la sesion");
+      Alert.alert("Error", "No se pudo cerrar la sesión");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <Screen title="Hola, visitante" subtitle="Que deseas hacer hoy?">
+    <Screen title="Hola, visitante" subtitle="¿Qué deseas hacer hoy?">
       <NavButton label="Solicitar visita" href="/solicitar-visita" />
       <NavButton label="Mis visitas" href="/mis-visitas" dark={false} />
 
@@ -37,7 +37,7 @@ export default function InicioScreen() {
         {loading ? (
           <ActivityIndicator color="#DC2626" />
         ) : (
-          <Text style={styles.logoutText}>Cerrar sesion</Text>
+          <Text style={styles.logoutText}>Cerrar sesión</Text>
         )}
       </Pressable>
     </Screen>

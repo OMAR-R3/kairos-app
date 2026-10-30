@@ -13,11 +13,11 @@ export default function ConfirmacionScreen() {
         <Text style={styles.folio}>{folio ?? "KV-000000"}</Text>
 
         <View style={styles.badge}>
-          <Text style={styles.badgeText}>Pendiente de aprobacion</Text>
+          <Text style={styles.badgeText}>Pendiente de aprobación</Text>
         </View>
 
         <Text style={styles.info}>
-          Recibiras una notificacion cuando tu visita sea aprobada
+          Recibirás una notificación cuando tu visita sea aprobada
         </Text>
       </View>
 
