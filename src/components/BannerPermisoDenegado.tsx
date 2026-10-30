@@ -19,7 +19,7 @@ export default function BannerPermisoDenegado({ visible }: BannerPermisoDenegado
     <View style={styles.banner}>
       <View style={styles.content}>
         <Text style={styles.text}>
-          Las notificaciones estan desactivadas. No recibiras avisos sobre tus
+          Las notificaciones están desactivadas. No recibirás avisos sobre tus
           visitas.
         </Text>
         <Pressable onPress={abrirAjustes} style={styles.link}>

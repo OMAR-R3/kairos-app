@@ -1,10 +1,23 @@
-// Facade: unico punto por el que la app habla con la API de Kairos (Next.js).
+// Facade: único punto por el que la app habla con la API de Kairos (Next.js).
 // La app nunca habla directo con Supabase.
 
 import * as SecureStore from "expo-secure-store";
+import { NotificacionesService } from "./NotificacionesService";
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
 const TOKEN_KEY = "kairos_visitante_token";
+let generacionSesion = 0;
+let cerrandoSesion = false;
+let registroPush: string | null = null;
+let colaPush: Promise<unknown> = Promise.resolve();
+
+// Las escrituras de sesión esperan a las peticiones push en curso. Nunca se
+// guarda un JWT en la cola: cada petición lo lee de SecureStore al ejecutarse.
+function enColaPush<T>(operacion: () => Promise<T>): Promise<T> {
+  const resultado = colaPush.then(operacion);
+  colaPush = resultado.catch(() => undefined);
+  return resultado;
+}
 
 export type DatosRegistro = {
   nombre: string;
@@ -52,7 +65,7 @@ export type Visita = {
 
 export class SesionExpiradaError extends Error {
   constructor() {
-    super("Tu sesion expiro, inicia sesion de nuevo");
+    super("Tu sesión expiró, inicia sesión de nuevo");
     this.name = "SesionExpiradaError";
   }
 }
@@ -74,7 +87,7 @@ export class VisitaNoEncontradaError extends Error {
 
 export const generarFolio = (id: number) => `KV-${String(id).padStart(6, "0")}`;
 
-// Revisa la fecha de expiracion del JWT sin llamar al servidor.
+// Revisa la fecha de expiración del JWT sin llamar al servidor.
 function tokenVigente(token: string): boolean {
   try {
     const parte = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
@@ -88,7 +101,12 @@ function tokenVigente(token: string): boolean {
 
 async function peticionAutenticada(
   ruta: string,
-  opciones: { method?: "GET" | "POST"; body?: unknown } = {}
+  opciones: {
+    method?: "GET" | "POST" | "DELETE";
+    body?: unknown;
+    conservarSesion?: boolean;
+    signal?: AbortSignal;
+  } = {}
 ): Promise<Response> {
   const token = await SecureStore.getItemAsync(TOKEN_KEY);
 
@@ -101,16 +119,37 @@ async function peticionAutenticada(
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
       body: opciones.body ? JSON.stringify(opciones.body) : undefined,
+      signal: opciones.signal,
     });
   } catch {
     throw new Error("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
   }
 
-  if (res.status === 401) {
+  if (res.status === 401 && !opciones.conservarSesion) {
     await SecureStore.deleteItemAsync(TOKEN_KEY);
     throw new SesionExpiradaError();
   }
   return res;
+}
+
+async function enviarTokenPush(
+  method: "POST" | "DELETE",
+  token: string,
+  plataforma?: "android" | "ios",
+): Promise<void> {
+  const controlador = new AbortController();
+  const temporizador = setTimeout(() => controlador.abort(), 8000);
+  try {
+    const res = await peticionAutenticada("/api/visitants/me/push-token", {
+      method,
+      body: method === "POST" ? { token, plataforma } : { token },
+      conservarSesion: true,
+      signal: controlador.signal,
+    });
+    if (!res.ok) throw new Error("No se pudo sincronizar el token de notificaciones");
+  } finally {
+    clearTimeout(temporizador);
+  }
 }
 
 export const VisitasService = {
@@ -124,7 +163,7 @@ export const VisitasService = {
     });
 
     if (res.status === 409) throw new Error("Ya existe una cuenta con ese correo");
-    if (res.status === 429) throw new Error("Demasiados intentos, intenta mas tarde");
+    if (res.status === 429) throw new Error("Demasiados intentos, intenta más tarde");
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
       throw new Error(body.error ?? "No se pudo crear la cuenta");
@@ -138,15 +177,20 @@ export const VisitasService = {
       body: JSON.stringify(datos),
     });
 
-    if (res.status === 401) throw new Error("Correo o contrasena incorrectos");
-    if (res.status === 429) throw new Error("Demasiados intentos, intenta mas tarde");
+    if (res.status === 401) throw new Error("Correo o contraseña incorrectos");
+    if (res.status === 429) throw new Error("Demasiados intentos, intenta más tarde");
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
-      throw new Error(body.error ?? "No se pudo iniciar sesion");
+      throw new Error(body.error ?? "No se pudo iniciar sesión");
     }
 
     const { token, visitante } = await res.json();
-    await SecureStore.setItemAsync(TOKEN_KEY, token);
+    generacionSesion += 1;
+    await enColaPush(async () => {
+      await SecureStore.setItemAsync(TOKEN_KEY, token);
+      registroPush = null;
+      cerrandoSesion = false;
+    });
     return visitante;
   },
 
@@ -170,7 +214,7 @@ export const VisitasService = {
     });
 
     if (res.status === 409) throw new Error("Ya tienes una visita registrada con esos datos");
-    if (res.status === 429) throw new Error("Demasiados intentos, intenta mas tarde");
+    if (res.status === 429) throw new Error("Demasiados intentos, intenta más tarde");
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
       throw new Error(body.error ?? "No se pudo agendar la visita");
@@ -214,13 +258,56 @@ export const VisitasService = {
   },
 
   async logout(): Promise<void> {
-    await SecureStore.deleteItemAsync(TOKEN_KEY);
+    cerrandoSesion = true;
+    generacionSesion += 1;
+    await enColaPush(async () => {
+      try {
+        const token = await NotificacionesService.tokenGuardado();
+        if (token) await enviarTokenPush("DELETE", token);
+      } catch {
+        // Push es opcional; no se retiene el JWT para reintentar.
+      } finally {
+        registroPush = null;
+        await SecureStore.deleteItemAsync(TOKEN_KEY);
+      }
+    });
+  },
+
+  generacionSesionPush: () => generacionSesion,
+
+  async registrarTokenPush(
+    token: string,
+    plataforma: "android" | "ios",
+    generacion: number,
+  ): Promise<void> {
+    await enColaPush(async () => {
+      if (cerrandoSesion || generacion !== generacionSesion) return;
+      const jwt = await SecureStore.getItemAsync(TOKEN_KEY);
+      if (!jwt || !tokenVigente(jwt) || generacion !== generacionSesion) return;
+      if (registroPush === token) return;
+      // Se conserva antes del POST para poder limpiar un registro cuya
+      // respuesta se perdió por un fallo de conexión.
+      await NotificacionesService.guardarToken(token);
+      if (cerrandoSesion || generacion !== generacionSesion) return;
+      await enviarTokenPush("POST", token, plataforma);
+      registroPush = token;
+    });
+  },
+
+  async eliminarTokenPush(token: string, generacion: number): Promise<void> {
+    await enColaPush(async () => {
+      if (cerrandoSesion || generacion !== generacionSesion) return;
+      if (!(await SecureStore.getItemAsync(TOKEN_KEY))) return;
+      await enviarTokenPush("DELETE", token);
+      registroPush = null;
+      await NotificacionesService.olvidarToken();
+    });
   },
 
   async getToken(): Promise<string | null> {
     return SecureStore.getItemAsync(TOKEN_KEY);
   },
-  // true si hay un token guardado y todavia no expira
+  // true si hay un token guardado y todavía no expira
   async obtenerDatosSesion(): Promise<Record<string, unknown> | null> {
     try {
       const token = await SecureStore.getItemAsync(TOKEN_KEY);

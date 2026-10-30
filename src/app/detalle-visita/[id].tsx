@@ -73,7 +73,7 @@ export default function DetalleVisitaScreen() {
       setVisita(detalle);
     } catch (err) {
       if (err instanceof SesionExpiradaError) {
-        Alert.alert("Sesion expirada", err.message);
+        Alert.alert("Sesión expirada", err.message);
         router.replace("/");
         return;
       }

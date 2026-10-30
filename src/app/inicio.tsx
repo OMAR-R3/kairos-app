@@ -4,11 +4,15 @@ import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from "rea
 import Screen from "../components/Screen";
 import NavButton from "../components/NavButton";
 import { VisitasService } from "../services/VisitasService";
+import AvisoNotificaciones from "../components/AvisoNotificaciones";
+import BannerPermisoDenegado from "../components/BannerPermisoDenegado";
+import usePermisoNotificaciones from "../hooks/usePermisoNotificaciones";
 
 // Pantalla 2: Inicio. Punto de entrada a las dos acciones principales.
 export default function InicioScreen() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const notificaciones = usePermisoNotificaciones();
 
   const handleLogout = async () => {
     setLoading(true);
@@ -16,14 +20,20 @@ export default function InicioScreen() {
       await VisitasService.logout();
       router.replace("/");
     } catch {
-      Alert.alert("Error", "No se pudo cerrar la sesion");
+      Alert.alert("Error", "No se pudo cerrar la sesión");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <Screen title="Hola, visitante" subtitle="Que deseas hacer hoy?">
+    <Screen title="Hola, visitante" subtitle="¿Qué deseas hacer hoy?">
+      <AvisoNotificaciones
+        visible={notificaciones.mostrarAviso && !loading}
+        onAceptar={notificaciones.aceptar}
+        onCancelar={notificaciones.cancelar}
+      />
+      <BannerPermisoDenegado visible={notificaciones.permisoDenegado} />
       <NavButton label="Solicitar visita" href="/solicitar-visita" />
       <NavButton label="Mis visitas" href="/mis-visitas" dark={false} />
 
@@ -37,7 +47,7 @@ export default function InicioScreen() {
         {loading ? (
           <ActivityIndicator color="#DC2626" />
         ) : (
-          <Text style={styles.logoutText}>Cerrar sesion</Text>
+          <Text style={styles.logoutText}>Cerrar sesión</Text>
         )}
       </Pressable>
     </Screen>

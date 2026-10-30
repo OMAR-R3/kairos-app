@@ -2,14 +2,14 @@ import { View, Text, StyleSheet } from "react-native";
 import Screen from "../components/Screen";
 import NavButton from "../components/NavButton";
 
-// Pantalla 7: Codigo QR (HU-06)
+// Pantalla 7: Código QR (HU-06)
 // TODO Sprint 7: reemplazar el recuadro gris por el QR real
 // (por ejemplo con react-native-qrcode-svg) generado por el backend
 export default function CodigoQrScreen() {
   return (
     <Screen
-      title="Tu codigo de acceso"
-      subtitle="Muestra este codigo en la caseta de vigilancia"
+      title="Tu código de acceso"
+      subtitle="Muestra este código en la caseta de vigilancia"
     >
       <View style={styles.qrPlaceholder}>
         <Text style={styles.qrText}>QR</Text>
