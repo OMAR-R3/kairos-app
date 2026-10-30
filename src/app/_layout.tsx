@@ -1,9 +1,12 @@
 import { Stack } from "expo-router";
+import useNotificationNavigation from "../hooks/useNotificationNavigation";
 
 // Navegador raiz de la app. Cada pantalla de Figma corresponde a una
 // ruta aquí. Sin tabs porque el recorrido es lineal (ver prototipo
 // de Figma: Login -> Inicio -> Solicitar visita -> ... -> QR).
 export default function RootLayout() {
+  useNotificationNavigation();
+
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="index" />
