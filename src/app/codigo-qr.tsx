@@ -1,17 +1,25 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import QRCode from "react-native-qrcode-svg";
 
-type EstadoQR = "valido" | "expirado" | "usado";
+export type EstadoQR = "valido" | "expirado" | "usado";
 
-const ESTADO_QR_CONFIG: Record<
-  EstadoQR,
-  { bg: string; text: string; label: string; mensaje: string; overlay: string }
-> = {
+type EstadoConfig = {
+  bg: string;
+  text: string;
+  label: string;
+  mensaje: string;
+  icono: string;
+  overlay: string;
+};
+
+const ESTADO_QR_CONFIG: Record<EstadoQR, EstadoConfig> = {
   valido: {
     bg: "#D1FAE5",
     text: "#065F46",
     label: "Válido",
     mensaje: "Muestra este código en la caseta de vigilancia",
+    icono: "✓",
     overlay: "",
   },
   expirado: {
@@ -19,6 +27,7 @@ const ESTADO_QR_CONFIG: Record<
     text: "#991B1B",
     label: "Expirado",
     mensaje: "Este código ya no es válido. Solicita una nueva visita.",
+    icono: "✕",
     overlay: "Código expirado",
   },
   usado: {
@@ -26,11 +35,14 @@ const ESTADO_QR_CONFIG: Record<
     text: "#3730A3",
     label: "Usado",
     mensaje: "Este código ya fue utilizado para ingresar.",
+    icono: "⎘",
     overlay: "Código utilizado",
   },
 };
 
 const ESTADOS_VALIDOS: EstadoQR[] = ["valido", "expirado", "usado"];
+
+const EJEMPLO_QR = "https://kairos.duckdns.org/visita/KV-000123";
 
 function esEstadoValido(valor: string): valor is EstadoQR {
   return (ESTADOS_VALIDOS as string[]).includes(valor);
@@ -40,10 +52,9 @@ export default function CodigoQrScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ folio?: string; estado?: string }>();
 
-  const folio = params.folio ?? "Sin folio";
-  const estado: EstadoQR = params.estado && esEstadoValido(params.estado)
-    ? params.estado
-    : "valido";
+  const folio = params.folio ?? "KV-000123";
+  const estado: EstadoQR =
+    params.estado && esEstadoValido(params.estado) ? params.estado : "valido";
 
   const config = ESTADO_QR_CONFIG[estado];
   const qrDeshabilitado = estado !== "valido";
@@ -60,19 +71,23 @@ export default function CodigoQrScreen() {
         <View style={styles.badgeContainer}>
           <View style={[styles.badge, { backgroundColor: config.bg }]}>
             <Text style={[styles.badgeText, { color: config.text }]}>
-              {config.label}
+              {config.icono} {config.label}
             </Text>
           </View>
         </View>
 
         <View
           style={[
-            styles.qrPlaceholder,
+            styles.qrWrapper,
             qrDeshabilitado && styles.qrDeshabilitado,
           ]}
         >
+          <QRCode value={EJEMPLO_QR} size={200} backgroundColor="#FFFFFF" />
           {qrDeshabilitado && (
             <View style={styles.qrOverlay}>
+              <Text style={styles.qrOverlayIcon}>
+                {estado === "expirado" ? "✕" : "✓"}
+              </Text>
               <Text style={styles.qrOverlayText}>{config.overlay}</Text>
             </View>
           )}
@@ -80,10 +95,7 @@ export default function CodigoQrScreen() {
 
         <Text style={styles.folio}>Folio {folio}</Text>
 
-        <Pressable
-          style={styles.volverButton}
-          onPress={() => router.back()}
-        >
+        <Pressable style={styles.volverButton} onPress={() => router.back()}>
           <Text style={styles.volverButtonText}>Volver</Text>
         </Pressable>
       </ScrollView>
@@ -113,6 +125,7 @@ const styles = StyleSheet.create({
     color: "#666666",
     marginTop: 8,
     textAlign: "center",
+    paddingHorizontal: 16,
   },
   badgeContainer: {
     marginTop: 16,
@@ -126,20 +139,20 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "600",
   },
-  qrPlaceholder: {
-    width: 220,
-    height: 220,
+  qrWrapper: {
+    width: 232,
+    height: 232,
     borderRadius: 12,
-    backgroundColor: "#EBEBEB",
+    backgroundColor: "#FFFFFF",
     borderWidth: 1,
-    borderColor: "#BFBFBF",
+    borderColor: "#E5E7EB",
     marginTop: 24,
     alignItems: "center",
     justifyContent: "center",
     overflow: "hidden",
   },
   qrDeshabilitado: {
-    opacity: 0.4,
+    opacity: 0.35,
   },
   qrOverlay: {
     position: "absolute",
@@ -147,13 +160,19 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    backgroundColor: "rgba(0, 0, 0, 0.6)",
     alignItems: "center",
     justifyContent: "center",
+    gap: 4,
+  },
+  qrOverlayIcon: {
+    color: "#FFFFFF",
+    fontSize: 32,
+    fontWeight: "700",
   },
   qrOverlayText: {
     color: "#FFFFFF",
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: "700",
   },
   folio: {
