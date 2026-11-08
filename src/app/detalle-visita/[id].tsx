@@ -151,12 +151,11 @@ export default function DetalleVisitaScreen() {
           label="Motivo"
           value={visita.motivo || "Sin motivo especificado"}
         />
-        {visita.estado !== "pendiente" && visita.estado !== "cancelada" && visita.estado !== "rechazada" && (
-          <Pressable
-            style={styles.qrButton}
-            onPress={() => router.push(`/codigo-qr?folio=${encodeURIComponent(visita.folio)}&estado=${encodeURIComponent(visita.estado)}`)}
-          >
-            <Text style={styles.qrButtonText}>Ver codigo QR</Text>
+        {visita.estado === "aprobada" && (
+          <Pressable style={styles.qrButton} onPress={() => router.push({
+            pathname: "/codigo-qr", params: { id: String(visita.id) },
+          })}>
+            <Text style={styles.qrButtonText}>Ver código QR</Text>
           </Pressable>
         )}
       </ScrollView>

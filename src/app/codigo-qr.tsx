@@ -1,8 +1,10 @@
-import { useLocalSearchParams, useRouter } from "expo-router";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { ActivityIndicator, Alert, AppState, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import QRCode from "react-native-qrcode-svg";
+import { CodigoQR, esIdVisitaValido, SesionExpiradaError, VisitasService } from "../services/VisitasService";
 
-export type EstadoQR = "valido" | "expirado" | "usado";
+export type EstadoQR = "valido" | "expirado" | "usado" | "anticipado";
 
 type EstadoConfig = {
   bg: string;
@@ -14,6 +16,7 @@ type EstadoConfig = {
 };
 
 const ESTADO_QR_CONFIG: Record<EstadoQR, EstadoConfig> = {
+  anticipado: { bg: "#FEF3C7", text: "#92400E", label: "Aún no vigente", mensaje: "El código estará disponible al iniciar su ventana de vigencia.", icono: "⎘", overlay: "Aún no vigente" },
   valido: {
     bg: "#D1FAE5",
     text: "#065F46",
@@ -33,39 +36,117 @@ const ESTADO_QR_CONFIG: Record<EstadoQR, EstadoConfig> = {
   usado: {
     bg: "#E0E7FF",
     text: "#3730A3",
-    label: "Usado",
+    label: "Utilizado",
     mensaje: "Este código ya fue utilizado para ingresar.",
     icono: "⎘",
     overlay: "Código utilizado",
   },
 };
 
-const ESTADOS_VALIDOS: EstadoQR[] = ["valido", "expirado", "usado"];
-
-const EJEMPLO_QR = "https://kairos.duckdns.org/visita/KV-000123";
-
-function esEstadoValido(valor: string): valor is EstadoQR {
-  return (ESTADOS_VALIDOS as string[]).includes(valor);
-}
 
 export default function CodigoQrScreen() {
+  const { id } = useLocalSearchParams<{ id?: string | string[] }>();
   const router = useRouter();
-  const params = useLocalSearchParams<{ folio?: string; estado?: string }>();
+  const [datos, setDatos] = useState<CodigoQR | null>(null);
+  const [cargando, setCargando] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [ahora, setAhora] = useState(() => Date.now());
+  const [bloqueado, setBloqueado] = useState(false);
+  const control = useRef<AbortController | null>(null);
+  const enfocado = useRef(false);
+  const ultimaConsulta = useRef(0);
+  const pendiente = useRef(false);
+  const vigenteId = esIdVisitaValido(id);
 
-  const folio = params.folio ?? "KV-000123";
-  const estado: EstadoQR =
-    params.estado && esEstadoValido(params.estado) ? params.estado : "valido";
+  const cargar = useCallback(async () => {
+    if (!enfocado.current || AppState.currentState === "background" || control.current) return;
+    if (!esIdVisitaValido(id)) {
+      setDatos(null); setError("El identificador de la visita no es válido."); setCargando(false);
+      return;
+    }
+    if (Date.now() - ultimaConsulta.current < 30000) { pendiente.current = true; setBloqueado(true); return; }
+    pendiente.current = false;
+    ultimaConsulta.current = Date.now();
+    setBloqueado(true);
+    const solicitud = new AbortController();
+    control.current = solicitud;
+    setDatos(null); setError(null); setCargando(true);
+    const timeout = setTimeout(() => solicitud.abort(), 15000);
+    try {
+      const qr = await VisitasService.obtenerQR(id, solicitud.signal);
+      if (control.current !== solicitud || !enfocado.current) return;
+      setAhora(Date.now()); setDatos(qr);
+    } catch (err) {
+      if (control.current !== solicitud || !enfocado.current) return;
+      if (err instanceof SesionExpiradaError) {
+        Alert.alert("Sesión expirada", err.message);
+        router.replace("/");
+      } else {
+        setError(err instanceof Error ? err.message : "No se pudo obtener el código QR.");
+      }
+    } finally {
+      clearTimeout(timeout);
+      if (control.current === solicitud) { control.current = null; setCargando(false); }
+    }
+  }, [id, router]);
 
+  useFocusEffect(useCallback(() => {
+    enfocado.current = true;
+    void cargar();
+    const listener = AppState.addEventListener("change", state => {
+      setDatos(null);
+      if (state === "active") { setAhora(Date.now()); void cargar(); }
+      else { control.current?.abort(); control.current = null; }
+    });
+    return () => {
+      enfocado.current = false;
+      pendiente.current = false;
+      control.current?.abort(); control.current = null;
+      setDatos(null);
+      listener.remove();
+    };
+  }, [cargar]));
+
+  useEffect(() => {
+    if (!bloqueado) return;
+    const timer = setTimeout(() => { setBloqueado(false); if (enfocado.current && pendiente.current) void cargar(); }, Math.max(0, ultimaConsulta.current + 30000 - Date.now()));
+    // No sondeo: solo se reconsulta si se perdió el QR al volver del segundo plano.
+    return () => clearTimeout(timer);
+  }, [bloqueado, cargando, cargar]);
+
+  useEffect(() => {
+    if (!datos || datos.estado_qr !== "valido") return;
+    const limite = Date.now() < Date.parse(datos.vigente_desde) ? Date.parse(datos.vigente_desde) : Date.parse(datos.vigente_hasta) + 1;
+    if (limite <= Date.now()) return;
+    const timer = setTimeout(() => {
+      setAhora(Date.now());
+      if (Date.now() > Date.parse(datos.vigente_hasta)) setDatos(prev => prev ? { ...prev, qr: null } : null);
+    }, Math.min(limite - Date.now(), 2147483647));
+    return () => clearTimeout(timer);
+  }, [datos, ahora]);
+
+  let estado: EstadoQR = datos?.estado_qr ?? "anticipado";
+  if (datos && estado === "valido") {
+    if (ahora > Date.parse(datos.vigente_hasta)) estado = "expirado";
+    else if (ahora < Date.parse(datos.vigente_desde)) estado = "anticipado";
+  }
   const config = ESTADO_QR_CONFIG[estado];
-  const qrDeshabilitado = estado !== "valido";
+  const volver = () => {
+    if (vigenteId) router.replace({ pathname: "/detalle-visita/[id]", params: { id } });
+    else router.replace("/mis-visitas");
+  };
 
+  const qrDeshabilitado = estado !== "valido";
   return (
     <View style={styles.container}>
       <ScrollView
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.title}>Tu codigo de acceso</Text>
+        <Text style={styles.title}>Tu código de acceso</Text>
+        {cargando && <ActivityIndicator style={styles.loading} size="large" color="#171717" />}
+        {error && <Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
+        {datos && !cargando && !error && <>
         <Text style={styles.subtitle}>{config.mensaje}</Text>
 
         <View style={styles.badgeContainer}>
@@ -82,7 +163,7 @@ export default function CodigoQrScreen() {
             qrDeshabilitado && styles.qrDeshabilitado,
           ]}
         >
-          <QRCode value={EJEMPLO_QR} size={200} backgroundColor="#FFFFFF" />
+          {!qrDeshabilitado && datos.qr && <QRCode value={datos.qr} size={200} backgroundColor="#FFFFFF" quietZone={8} />}
           {qrDeshabilitado && (
             <View style={styles.qrOverlay}>
               <Text style={styles.qrOverlayIcon}>
@@ -93,9 +174,15 @@ export default function CodigoQrScreen() {
           )}
         </View>
 
-        <Text style={styles.folio}>Folio {folio}</Text>
+        <Text style={styles.folio}>Folio {datos.folio}</Text>
 
-        <Pressable style={styles.volverButton} onPress={() => router.back()}>
+        <Text style={styles.subtitle}>Vigencia: {new Date(datos.vigente_desde).toLocaleString("es-MX", { timeZone: "America/Mexico_City" })} – {new Date(datos.vigente_hasta).toLocaleString("es-MX", { timeZone: "America/Mexico_City" })} (hora de Ciudad de México)</Text>
+        </>}
+        {vigenteId && <Pressable accessibilityRole="button" accessibilityLabel={error ? "Reintentar" : "Actualizar estado"} disabled={cargando || bloqueado} style={[styles.volverButton, (cargando || bloqueado) && styles.disabled]} onPress={() => void cargar()}>
+          <Text style={styles.volverButtonText}>{error ? "Reintentar" : "Actualizar estado"}</Text>
+        </Pressable>}
+        {bloqueado && !cargando && <Text style={styles.subtitle}>Podrás actualizar nuevamente en unos segundos.</Text>}
+        <Pressable accessibilityRole="button" accessibilityLabel="Volver" style={styles.volverButton} onPress={volver}>
           <Text style={styles.volverButtonText}>Volver</Text>
         </Pressable>
       </ScrollView>
@@ -104,6 +191,9 @@ export default function CodigoQrScreen() {
 }
 
 const styles = StyleSheet.create({
+  loading: { marginVertical: 48 },
+  error: { color: "#991B1B", textAlign: "center", marginVertical: 24 },
+  disabled: { opacity: 0.5 },
   container: {
     flex: 1,
     backgroundColor: "#FFFFFF",
