@@ -87,6 +87,19 @@ export class VisitaNoEncontradaError extends Error {
 
 export const generarFolio = (id: number) => `KV-${String(id).padStart(6, "0")}`;
 
+export type CodigoQR = {
+  visita_id: number;
+  folio: string;
+  qr: string | null;
+  estado_qr: "valido" | "expirado" | "usado";
+  vigente_desde: string;
+  vigente_hasta: string;
+};
+
+export function esIdVisitaValido(id: unknown): id is string {
+  return typeof id === "string" && /^[1-9]\d*$/.test(id) && Number.isSafeInteger(Number(id));
+}
+
 // Revisa la fecha de expiración del JWT sin llamar al servidor.
 function tokenVigente(token: string): boolean {
   try {
@@ -153,7 +166,32 @@ async function enviarTokenPush(
 }
 
 export const VisitasService = {
-  // TODO: agendarVisita(), obtenerVisitas(), obtenerQR()...
+  async obtenerQR(id: string, signal?: AbortSignal): Promise<CodigoQR> {
+    if (!esIdVisitaValido(id)) throw new Error("El identificador de la visita no es válido.");
+    const res = await peticionAutenticada(`/api/visits/me/${encodeURIComponent(id)}/qr`, { signal });
+    if (res.status === 404) throw new VisitaNoEncontradaError();
+    const body = await res.json().catch(() => null);
+    if (!res.ok) {
+      throw new Error(typeof body?.error === "string" ? body.error : "No se pudo obtener el código QR.");
+    }
+    const data = body?.data;
+    const fechaISO = (value: unknown): value is string =>
+      typeof value === "string" && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/.test(value) &&
+      Number.isFinite(Date.parse(value)) && new Date(value).toISOString() === value.replace(/Z$/, value.includes(".") ? "Z" : ".000Z");
+    if (body?.success !== true || !data ||
+      !Number.isSafeInteger(data.visita_id) || data.visita_id !== Number(id) ||
+      typeof data.folio !== "string" || !data.folio.trim() ||
+      !["valido", "expirado", "usado"].includes(data.estado_qr) ||
+      !fechaISO(data.vigente_desde) || !fechaISO(data.vigente_hasta) ||
+      Date.parse(data.vigente_desde) >= Date.parse(data.vigente_hasta) ||
+      (data.estado_qr === "valido" ? typeof data.qr !== "string" || !data.qr.trim() : data.qr !== null)) {
+      throw new Error("La respuesta del código QR no es válida. Inténtalo de nuevo.");
+    }
+    return {
+      visita_id: data.visita_id, folio: data.folio, qr: data.qr,
+      estado_qr: data.estado_qr, vigente_desde: data.vigente_desde, vigente_hasta: data.vigente_hasta,
+    };
+  },
 
   async registrarVisitante(datos: DatosRegistro): Promise<void> {
     const res = await fetch(`${API_URL}/api/auth/visitante-registro`, {
