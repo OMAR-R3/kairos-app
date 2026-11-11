@@ -117,6 +117,14 @@ export default function LoginScreen() {
           </Pressable>
 
           <NavButton label="Crear cuenta" href="/crear-cuenta" dark={false} />
+
+          <View style={styles.separador}>
+            <View style={styles.lineaSeparador} />
+            <Text style={styles.separadorTexto}>o</Text>
+            <View style={styles.lineaSeparador} />
+          </View>
+
+          <NavButton label="Consultar mi historial" href="/consultar-historial" dark={false} />
         </ScrollView>
       </KeyboardAvoidingView>
     </Screen>
@@ -128,4 +136,7 @@ const styles = StyleSheet.create({
   button: { paddingVertical: 14, borderRadius: 8, alignItems: "center", backgroundColor: "#171717" },
   buttonDisabled: { opacity: 0.6 },
   buttonText: { color: "#FFFFFF", fontWeight: "700", fontSize: 15 },
+  separador: { flexDirection: "row", alignItems: "center", marginVertical: 4 },
+  lineaSeparador: { flex: 1, height: 1, backgroundColor: "#E5E7EB" },
+  separadorTexto: { marginHorizontal: 12, fontSize: 13, color: "#9CA3AF" },
 });

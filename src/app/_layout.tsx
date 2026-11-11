@@ -13,6 +13,7 @@ export default function RootLayout() {
       <Stack.Screen name="inicio" />
       <Stack.Screen name="solicitar-visita" />
       <Stack.Screen name="confirmacion" />
+      <Stack.Screen name="consultar-historial" />
       <Stack.Screen name="mis-visitas" />
       <Stack.Screen name="detalle-visita/[id]" />
       <Stack.Screen name="codigo-qr" />
