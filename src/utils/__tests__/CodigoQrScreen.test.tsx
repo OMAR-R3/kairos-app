@@ -2,7 +2,7 @@ import React from "react";
 import { act, create, ReactTestRenderer } from "react-test-renderer";
 import { Alert, AppState } from "react-native";
 import CodigoQrScreen from "../../app/codigo-qr";
-import { SesionExpiradaError, VisitasService } from "../../services/VisitasService";
+import { ErrorConexion, SesionExpiradaError, VisitasService } from "../../services/VisitasService";
 
 const mockReplace = jest.fn();
 let mockId: string | string[] | undefined = "123";
@@ -15,9 +15,10 @@ jest.mock("expo-router", () => ({
 jest.mock("react-native-qrcode-svg", () => "QRCode");
 jest.mock("../../services/VisitasService", () => {
   const actual = jest.requireActual("../../services/VisitasService");
-  return { ...actual, VisitasService: { obtenerQR: jest.fn() } };
+  return { ...actual, VisitasService: { obtenerQR: jest.fn(), obtenerQRGuardado: jest.fn(), generacionSesionPush: jest.fn(() => 0) } };
 });
 const mockQR = VisitasService.obtenerQR as jest.Mock;
+const mockGuardado = VisitasService.obtenerQRGuardado as jest.Mock;
 const data = { visita_id: 123, folio: "KV-000123", qr: "token-real", estado_qr: "valido", vigente_desde: "2026-11-07T17:30:00.000Z", vigente_hasta: "2026-11-07T18:30:00.000Z" };
 let screen: ReactTestRenderer;
 beforeEach(() => {
@@ -25,6 +26,8 @@ beforeEach(() => {
   jest.useFakeTimers(); jest.setSystemTime(new Date("2026-11-07T18:00:00Z"));
   mockId = "123"; mockQR.mockReset(); mockReplace.mockReset();
   mockQR.mockResolvedValue(data);
+  mockGuardado.mockReset(); mockGuardado.mockResolvedValue(null);
+  (VisitasService.generacionSesionPush as jest.Mock).mockReturnValue(0);
   jest.spyOn(AppState, "addEventListener").mockReturnValue({ remove: jest.fn() });
 });
 afterEach(async () => { if (screen) await act(async () => screen.unmount()); jest.restoreAllMocks(); jest.useRealTimers(); });
@@ -100,4 +103,86 @@ it("descarta la respuesta de otra visita al cambiar el id", async () => {
   mockQR.mockResolvedValue({ ...data, visita_id: 124, folio: "KV-000124", qr: "otro-token" });
   await act(async () => { jest.advanceTimersByTime(30000); });
   expect(codigos()[0].props.value).toBe("otro-token");
+});
+
+it("muestra el QR guardado con aviso explícito y última comprobación al fallar la red", async () => {
+  mockQR.mockRejectedValue(new ErrorConexion());
+  mockGuardado.mockResolvedValue({ ...data, ultima_comprobacion: Date.now() });
+  await montar();
+  expect(mockGuardado).toHaveBeenCalledWith("123");
+  expect(codigos()[0].props.value).toBe(data.qr);
+  const contenido = JSON.stringify(screen.toJSON());
+  expect(contenido).toContain("Sin conexión · QR no verificado");
+  expect(contenido).toContain("Última comprobación");
+  expect(contenido).not.toContain("✓ Válido");
+});
+
+it.each([-1, 0, 1])("no muestra copia antes del inicio; límite %s ms", async delta => {
+  jest.setSystemTime(Date.parse(data.vigente_desde) + delta);
+  mockQR.mockRejectedValue(new ErrorConexion());
+  mockGuardado.mockResolvedValue({ ...data, ultima_comprobacion: Date.now() - 1000 });
+  await montar(); expect(codigos()).toHaveLength(delta < 0 ? 0 : 1);
+});
+
+it.each([-1, 0, 1])("respeta el fin de la ventana offline; límite %s ms", async delta => {
+  jest.setSystemTime(Date.parse(data.vigente_hasta) + delta);
+  mockQR.mockRejectedValue(new ErrorConexion());
+  mockGuardado.mockResolvedValue({ ...data, ultima_comprobacion: Date.now() - 1000 });
+  await montar(); expect(codigos()).toHaveLength(delta <= 0 ? 1 : 0);
+});
+
+it("retira la copia offline al vencer sin consultar otra vez", async () => {
+  jest.setSystemTime(Date.parse(data.vigente_hasta) - 1);
+  mockQR.mockRejectedValue(new ErrorConexion());
+  mockGuardado.mockResolvedValue({ ...data, ultima_comprobacion: Date.now() - 1000 });
+  await montar(); await act(async () => { jest.advanceTimersByTime(2); });
+  expect(codigos()).toHaveLength(0); expect(mockQR).toHaveBeenCalledTimes(1);
+});
+
+it.each(["403", "404", "contrato", "AbortError", "401"])("no consulta caché ante %s", async tipo => {
+  jest.spyOn(Alert, "alert").mockImplementation(() => {});
+  const error = tipo === "401" ? new SesionExpiradaError() : new Error(tipo);
+  if (tipo === "AbortError") error.name = tipo;
+  mockQR.mockRejectedValue(error);
+  mockGuardado.mockResolvedValue({ ...data, ultima_comprobacion: Date.now() });
+  await montar(); expect(mockGuardado).not.toHaveBeenCalled(); expect(codigos()).toHaveLength(0);
+});
+
+it("recupera caché tras timeout y conserva el límite de actualización", async () => {
+  mockQR.mockImplementation((_id, signal: AbortSignal) => new Promise((_resolve, reject) => {
+    signal.addEventListener("abort", () => { const e = new Error("timeout"); e.name = "AbortError"; reject(e); });
+  }));
+  mockGuardado.mockResolvedValue({ ...data, ultima_comprobacion: Date.now() });
+  await montar(); await act(async () => { jest.advanceTimersByTime(15000); });
+  expect(codigos()).toHaveLength(1);
+  expect(screen.root.findByProps({ accessibilityLabel: "Actualizar estado" }).props.disabled).toBe(true);
+});
+
+it("descarta recuperación tardía de caché tras cambiar de sesión", async () => {
+  let resolver!: (value: unknown) => void;
+  mockQR.mockRejectedValue(new ErrorConexion());
+  mockGuardado.mockReturnValue(new Promise(resolve => { resolver = resolve; }));
+  await montar();
+  (VisitasService.generacionSesionPush as jest.Mock).mockReturnValue(1);
+  await act(async () => { resolver({ ...data, ultima_comprobacion: Date.now() }); });
+  expect(codigos()).toHaveLength(0);
+});
+
+it("sustituye la copia no verificada al actualizar exitosamente", async () => {
+  mockQR.mockRejectedValueOnce(new ErrorConexion());
+  mockGuardado.mockResolvedValue({ ...data, ultima_comprobacion: Date.now() });
+  await montar(); await act(async () => { jest.advanceTimersByTime(30000); });
+  await pulsar("Actualizar estado");
+  expect(codigos()).toHaveLength(1);
+  expect(JSON.stringify(screen.toJSON())).not.toContain("Sin conexión · QR no verificado");
+});
+
+it("redirige por 401 aunque la invalidación haya incrementado la generación", async () => {
+  jest.spyOn(Alert, "alert").mockImplementation(() => {});
+  mockQR.mockImplementation(async () => {
+    (VisitasService.generacionSesionPush as jest.Mock).mockReturnValue(1);
+    throw new SesionExpiradaError();
+  });
+  await montar(); expect(mockReplace).toHaveBeenCalledWith("/");
+  expect(mockGuardado).not.toHaveBeenCalled();
 });

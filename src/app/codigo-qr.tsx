@@ -2,7 +2,7 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Alert, AppState, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import QRCode from "react-native-qrcode-svg";
-import { CodigoQR, esIdVisitaValido, SesionExpiradaError, VisitasService } from "../services/VisitasService";
+import { CodigoQR, ErrorConexion, esIdVisitaValido, SesionExpiradaError, VisitasService } from "../services/VisitasService";
 
 export type EstadoQR = "valido" | "expirado" | "usado" | "anticipado";
 
@@ -50,6 +50,7 @@ export default function CodigoQrScreen() {
   const [datos, setDatos] = useState<CodigoQR | null>(null);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [comprobacionGuardada, setComprobacionGuardada] = useState<number | null>(null);
   const [ahora, setAhora] = useState(() => Date.now());
   const [bloqueado, setBloqueado] = useState(false);
   const control = useRef<AbortController | null>(null);
@@ -69,20 +70,32 @@ export default function CodigoQrScreen() {
     ultimaConsulta.current = Date.now();
     setBloqueado(true);
     const solicitud = new AbortController();
+    const generacion = VisitasService.generacionSesionPush();
     control.current = solicitud;
-    setDatos(null); setError(null); setCargando(true);
-    const timeout = setTimeout(() => solicitud.abort(), 15000);
+    setDatos(null); setComprobacionGuardada(null); setError(null); setCargando(true);
+    let agotoTiempo = false;
+    const timeout = setTimeout(() => { agotoTiempo = true; solicitud.abort(); }, 15000);
     try {
       const qr = await VisitasService.obtenerQR(id, solicitud.signal);
-      if (control.current !== solicitud || !enfocado.current) return;
+      if (control.current !== solicitud || !enfocado.current || generacion !== VisitasService.generacionSesionPush()) return;
       setAhora(Date.now()); setDatos(qr);
     } catch (err) {
-      if (control.current !== solicitud || !enfocado.current) return;
+      if (control.current !== solicitud || !enfocado.current ||
+          (generacion !== VisitasService.generacionSesionPush() && !(err instanceof SesionExpiradaError))) return;
+      if (err instanceof ErrorConexion || (agotoTiempo && err instanceof Error && err.name === "AbortError")) {
+        const guardado = await VisitasService.obtenerQRGuardado(id);
+        if (control.current !== solicitud || !enfocado.current || generacion !== VisitasService.generacionSesionPush()) return;
+        if (guardado) {
+          setAhora(Date.now()); setDatos(guardado);
+          setComprobacionGuardada(guardado.ultima_comprobacion);
+          return;
+        }
+      }
       if (err instanceof SesionExpiradaError) {
         Alert.alert("Sesión expirada", err.message);
         router.replace("/");
       } else {
-        setError(err instanceof Error ? err.message : "No se pudo obtener el código QR.");
+        setError(agotoTiempo ? "La consulta tardó demasiado. No hay un QR guardado disponible." : err instanceof Error ? err.message : "No se pudo obtener el código QR.");
       }
     } finally {
       clearTimeout(timeout);
@@ -147,12 +160,16 @@ export default function CodigoQrScreen() {
         {cargando && <ActivityIndicator style={styles.loading} size="large" color="#171717" />}
         {error && <Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
         {datos && !cargando && !error && <>
+        {comprobacionGuardada !== null && <>
+          <Text accessibilityRole="alert" style={styles.subtitle}>Sin conexión · QR no verificado</Text>
+          <Text style={styles.subtitle}>Última comprobación: {new Date(comprobacionGuardada).toLocaleString("es-MX", { timeZone: "America/Mexico_City" })} (hora de Ciudad de México). Puede haber sido utilizado desde entonces.</Text>
+        </>}
         <Text style={styles.subtitle}>{config.mensaje}</Text>
 
         <View style={styles.badgeContainer}>
           <View style={[styles.badge, { backgroundColor: config.bg }]}>
             <Text style={[styles.badgeText, { color: config.text }]}>
-              {config.icono} {config.label}
+              {comprobacionGuardada !== null && estado === "valido" ? "No verificado" : `${config.icono} ${config.label}`}
             </Text>
           </View>
         </View>
