@@ -1,6 +1,6 @@
-import { useRouter } from "expo-router";
-import { useState } from "react";
-import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from "react-native";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useCallback, useState } from "react";
+import { ActivityIndicator, Alert, AppState, Pressable, StyleSheet, Text, View } from "react-native";
 import Screen from "../components/Screen";
 import NavButton from "../components/NavButton";
 import { VisitasService } from "../services/VisitasService";
@@ -12,10 +12,29 @@ import usePermisoNotificaciones from "../hooks/usePermisoNotificaciones";
 export default function InicioScreen() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [qrGuardado, setQRGuardado] = useState<number | null>(null);
   const notificaciones = usePermisoNotificaciones();
+
+  useFocusEffect(useCallback(() => {
+    let activo = true;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const actualizar = async () => {
+      const qr = await VisitasService.obtenerQRGuardado();
+      if (!activo) return;
+      setQRGuardado(qr?.visita_id ?? null);
+      clearTimeout(timer);
+      if (qr) timer = setTimeout(() => void actualizar(), Math.min(2147483647, Math.max(1, Date.parse(qr.vigente_hasta) + 1 - Date.now())));
+    };
+    void actualizar();
+    const listener = AppState.addEventListener("change", state => {
+      if (state === "active") void actualizar();
+    });
+    return () => { activo = false; clearTimeout(timer); listener.remove(); };
+  }, []));
 
   const handleLogout = async () => {
     setLoading(true);
+    setQRGuardado(null);
     try {
       await VisitasService.logout();
       router.replace("/");
@@ -36,6 +55,7 @@ export default function InicioScreen() {
       <BannerPermisoDenegado visible={notificaciones.permisoDenegado} />
       <NavButton label="Solicitar visita" href="/solicitar-visita" />
       <NavButton label="Mis visitas" href="/mis-visitas" dark={false} />
+      {!loading && qrGuardado !== null && <NavButton label="Ver último QR guardado" href={{ pathname: "/codigo-qr", params: { id: String(qrGuardado) } }} dark={false} />}
 
       <View style={styles.spacer} />
 
