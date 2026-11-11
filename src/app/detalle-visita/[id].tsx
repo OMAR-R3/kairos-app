@@ -151,7 +151,13 @@ export default function DetalleVisitaScreen() {
           label="Motivo"
           value={visita.motivo || "Sin motivo especificado"}
         />
-        {/* Sprint 7: aquí va el botón "Ver código QR" (HU-06) */}
+        {visita.estado === "aprobada" && (
+          <Pressable style={styles.qrButton} onPress={() => router.push({
+            pathname: "/codigo-qr", params: { id: String(visita.id) },
+          })}>
+            <Text style={styles.qrButtonText}>Ver código QR</Text>
+          </Pressable>
+        )}
       </ScrollView>
     </View>
   );
