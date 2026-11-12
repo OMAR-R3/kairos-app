@@ -218,8 +218,11 @@ it("conserva el registro push y su desvinculación con el JWT vigente", async ()
     body: JSON.stringify({ token: "push", plataforma: "android" }),
   }));
   mockPush.mockResolvedValue("push"); await service.logout();
-  expect(mockFetch).toHaveBeenLastCalledWith(expect.stringContaining("/api/visitants/me/push-token"), expect.objectContaining({
+  expect(mockFetch).toHaveBeenNthCalledWith(2, expect.stringContaining("/api/visitants/me/push-token"), expect.objectContaining({
     method: "DELETE", headers: expect.objectContaining({ Authorization: `Bearer ${jwt()}` }),
+  }));
+  expect(mockFetch).toHaveBeenLastCalledWith(expect.stringContaining("/api/visitants/me/logout"), expect.objectContaining({
+    method: "POST", headers: expect.objectContaining({ Authorization: `Bearer ${jwt()}` }),
   }));
   expect(mockDisk.size).toBe(0);
 });
