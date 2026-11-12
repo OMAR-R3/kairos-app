@@ -2,8 +2,8 @@
 // La app nunca habla directo con Supabase.
 
 import * as SecureStore from "expo-secure-store";
-import { QRCacheService, QRGuardado } from "./QRCacheService";
 import { NotificacionesService } from "./NotificacionesService";
+import { QRCacheService, QRGuardado } from "./QRCacheService";
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
 const TOKEN_KEY = "kairos_visitante_token";
@@ -22,10 +22,13 @@ function enColaPush<T>(operacion: () => Promise<T>): Promise<T> {
 
 async function limpiarSesionLocal(): Promise<void> {
   const resultados = await Promise.allSettled([
-    SecureStore.deleteItemAsync(TOKEN_KEY), QRCacheService.limpiar(),
+    SecureStore.deleteItemAsync(TOKEN_KEY),
+    QRCacheService.limpiar(),
   ]);
-  if (resultados.some(r => r.status === "rejected")) {
-    throw new Error("No se pudieron eliminar todos los datos de sesión. Intenta cerrar sesión de nuevo.");
+  if (resultados.some((r) => r.status === "rejected")) {
+    throw new Error(
+      "No se pudieron eliminar todos los datos de sesión. Intenta cerrar sesión de nuevo.",
+    );
   }
 }
 
@@ -114,7 +117,11 @@ export type CodigoQR = {
 };
 
 export function esIdVisitaValido(id: unknown): id is string {
-  return typeof id === "string" && /^[1-9]\d*$/.test(id) && Number.isSafeInteger(Number(id));
+  return (
+    typeof id === "string" &&
+    /^[1-9]\d*$/.test(id) &&
+    Number.isSafeInteger(Number(id))
+  );
 }
 
 // Revisa la fecha de expiración del JWT sin llamar al servidor.
@@ -136,7 +143,7 @@ async function peticionAutenticada(
     body?: unknown;
     conservarSesion?: boolean;
     signal?: AbortSignal;
-  } = {}
+  } = {},
 ): Promise<Response> {
   const generacion = generacionSesion;
   const token = await SecureStore.getItemAsync(TOKEN_KEY);
@@ -179,13 +186,20 @@ async function peticionAutenticada(
       QRCacheService.revocar();
       const invalidada = generacionSesion;
       let fallo: unknown;
-      try { await enColaPush(() => limpiarSesionLocal()); } catch (error) { fallo = error; }
+      try {
+        await enColaPush(() => limpiarSesionLocal());
+      } catch (error) {
+        fallo = error;
+      }
       if (invalidada !== generacionSesion) {
         const cancelada = new Error("La sesión de la consulta cambió.");
         cancelada.name = "AbortError";
         throw cancelada;
       }
-      if (fallo) throw new SesionExpiradaError("Tu sesión expiró. No se pudieron eliminar todos los datos locales; intenta cerrar sesión de nuevo.");
+      if (fallo)
+        throw new SesionExpiradaError(
+          "Tu sesión expiró. No se pudieron eliminar todos los datos locales; intenta cerrar sesión de nuevo.",
+        );
     }
     throw new SesionExpiradaError();
   }
@@ -206,7 +220,25 @@ async function enviarTokenPush(
       conservarSesion: true,
       signal: controlador.signal,
     });
-    if (!res.ok) throw new Error("No se pudo sincronizar el token de notificaciones");
+    if (!res.ok)
+      throw new Error("No se pudo sincronizar el token de notificaciones");
+  } finally {
+    clearTimeout(temporizador);
+  }
+}
+
+// Revoca la sesión en el servidor (HU-7). Debe ejecutarse mientras el JWT sigue
+// guardado, porque la ruta exige Authorization. No lleva cuerpo.
+async function cerrarSesionEnServidor(): Promise<void> {
+  const controlador = new AbortController();
+  const temporizador = setTimeout(() => controlador.abort(), 8000);
+  try {
+    const res = await peticionAutenticada("/api/visitants/me/logout", {
+      method: "POST",
+      conservarSesion: true,
+      signal: controlador.signal,
+    });
+    if (!res.ok) throw new Error("No se pudo cerrar la sesión en el servidor");
   } finally {
     clearTimeout(temporizador);
   }
@@ -214,30 +246,55 @@ async function enviarTokenPush(
 
 export const VisitasService = {
   async obtenerQR(id: string, signal?: AbortSignal): Promise<CodigoQR> {
-    if (!esIdVisitaValido(id)) throw new Error("El identificador de la visita no es válido.");
+    if (!esIdVisitaValido(id))
+      throw new Error("El identificador de la visita no es válido.");
     const generacion = generacionSesion;
     const origen = QRCacheService.generacion();
-    const res = await peticionAutenticada(`/api/visits/me/${encodeURIComponent(id)}/qr`, { signal });
+    const res = await peticionAutenticada(
+      `/api/visits/me/${encodeURIComponent(id)}/qr`,
+      { signal },
+    );
     if (res.status === 404) throw new VisitaNoEncontradaError();
     const body = await res.json().catch(() => null);
     if (!res.ok) {
-      throw new Error(typeof body?.error === "string" ? body.error : "No se pudo obtener el código QR.");
+      throw new Error(
+        typeof body?.error === "string"
+          ? body.error
+          : "No se pudo obtener el código QR.",
+      );
     }
     const data = body?.data;
     const fechaISO = (value: unknown): value is string =>
-      typeof value === "string" && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/.test(value) &&
-      Number.isFinite(Date.parse(value)) && new Date(value).toISOString() === value.replace(/Z$/, value.includes(".") ? "Z" : ".000Z");
-    if (body?.success !== true || !data ||
-      !Number.isSafeInteger(data.visita_id) || data.visita_id !== Number(id) ||
-      typeof data.folio !== "string" || !data.folio.trim() ||
+      typeof value === "string" &&
+      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/.test(value) &&
+      Number.isFinite(Date.parse(value)) &&
+      new Date(value).toISOString() ===
+        value.replace(/Z$/, value.includes(".") ? "Z" : ".000Z");
+    if (
+      body?.success !== true ||
+      !data ||
+      !Number.isSafeInteger(data.visita_id) ||
+      data.visita_id !== Number(id) ||
+      typeof data.folio !== "string" ||
+      !data.folio.trim() ||
       !["valido", "expirado", "usado"].includes(data.estado_qr) ||
-      !fechaISO(data.vigente_desde) || !fechaISO(data.vigente_hasta) ||
+      !fechaISO(data.vigente_desde) ||
+      !fechaISO(data.vigente_hasta) ||
       Date.parse(data.vigente_desde) >= Date.parse(data.vigente_hasta) ||
-      (data.estado_qr === "valido" ? typeof data.qr !== "string" || !data.qr.trim() : data.qr !== null)) {
-      throw new Error("La respuesta del código QR no es válida. Inténtalo de nuevo.");
+      (data.estado_qr === "valido"
+        ? typeof data.qr !== "string" || !data.qr.trim()
+        : data.qr !== null)
+    ) {
+      throw new Error(
+        "La respuesta del código QR no es válida. Inténtalo de nuevo.",
+      );
     }
     const comprobarConsulta = () => {
-      if (signal?.aborted || generacion !== generacionSesion || cerrandoSesion) {
+      if (
+        signal?.aborted ||
+        generacion !== generacionSesion ||
+        cerrandoSesion
+      ) {
         const error = new Error("La consulta fue cancelada.");
         error.name = "AbortError";
         throw error;
@@ -245,8 +302,12 @@ export const VisitasService = {
     };
     comprobarConsulta();
     const qr: CodigoQR = {
-      visita_id: data.visita_id, folio: data.folio, qr: data.qr,
-      estado_qr: data.estado_qr, vigente_desde: data.vigente_desde, vigente_hasta: data.vigente_hasta,
+      visita_id: data.visita_id,
+      folio: data.folio,
+      qr: data.qr,
+      estado_qr: data.estado_qr,
+      vigente_desde: data.vigente_desde,
+      vigente_hasta: data.vigente_hasta,
     };
     try {
       if (qr.estado_qr === "valido") await QRCacheService.guardar(qr, origen);
@@ -262,7 +323,8 @@ export const VisitasService = {
     const generacion = generacionSesion;
     const origen = QRCacheService.generacion();
     try {
-      if (cerrandoSesion || (id !== undefined && !esIdVisitaValido(id))) return null;
+      if (cerrandoSesion || (id !== undefined && !esIdVisitaValido(id)))
+        return null;
       const token = await SecureStore.getItemAsync(TOKEN_KEY);
       if (!token || !tokenVigente(token)) return null;
       const qr = await QRCacheService.leer(origen, id);
@@ -279,8 +341,10 @@ export const VisitasService = {
       body: JSON.stringify(datos),
     });
 
-    if (res.status === 409) throw new Error("Ya existe una cuenta con ese correo");
-    if (res.status === 429) throw new Error("Demasiados intentos, intenta más tarde");
+    if (res.status === 409)
+      throw new Error("Ya existe una cuenta con ese correo");
+    if (res.status === 429)
+      throw new Error("Demasiados intentos, intenta más tarde");
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
       throw new Error(body.error ?? "No se pudo crear la cuenta");
@@ -295,7 +359,8 @@ export const VisitasService = {
     });
 
     if (res.status === 401) throw new Error("Correo o contraseña incorrectos");
-    if (res.status === 429) throw new Error("Demasiados intentos, intenta más tarde");
+    if (res.status === 429)
+      throw new Error("Demasiados intentos, intenta más tarde");
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
       throw new Error(body.error ?? "No se pudo iniciar sesión");
@@ -327,15 +392,19 @@ export const VisitasService = {
     return body.data ?? body;
   },
 
-  async agendarVisita(datos: DatosVisita): Promise<{ visita: Visita; folio: string }> {
+  async agendarVisita(
+    datos: DatosVisita,
+  ): Promise<{ visita: Visita; folio: string }> {
     // visitante_id no se manda, el backend lo toma del token
     const res = await peticionAutenticada("/api/visits/me", {
       method: "POST",
       body: datos,
     });
 
-    if (res.status === 409) throw new Error("Ya tienes una visita registrada con esos datos");
-    if (res.status === 429) throw new Error("Demasiados intentos, intenta más tarde");
+    if (res.status === 409)
+      throw new Error("Ya tienes una visita registrada con esos datos");
+    if (res.status === 429)
+      throw new Error("Demasiados intentos, intenta más tarde");
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
       throw new Error(body.error ?? "No se pudo agendar la visita");
@@ -364,16 +433,24 @@ export const VisitasService = {
       throw new Error("El identificador de la visita no es válido.");
     }
 
-    const res = await peticionAutenticada(`/api/visits/me/${encodeURIComponent(id)}`);
+    const res = await peticionAutenticada(
+      `/api/visits/me/${encodeURIComponent(id)}`,
+    );
     if (res.status === 404) throw new VisitaNoEncontradaError();
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
-      throw new Error(body.error ?? "No fue posible cargar los detalles de la visita. Inténtalo de nuevo.");
+      throw new Error(
+        body.error ??
+          "No fue posible cargar los detalles de la visita. Inténtalo de nuevo.",
+      );
     }
 
-    const body: { success: boolean; data: DetalleVisita | null } = await res.json();
+    const body: { success: boolean; data: DetalleVisita | null } =
+      await res.json();
     if (!body.success || !body.data) {
-      throw new Error("No fue posible cargar los detalles de la visita. Inténtalo de nuevo.");
+      throw new Error(
+        "No fue posible cargar los detalles de la visita. Inténtalo de nuevo.",
+      );
     }
     return body.data;
   },
@@ -384,12 +461,28 @@ export const VisitasService = {
     QRCacheService.revocar();
     await enColaPush(async () => {
       try {
-        const token = await NotificacionesService.tokenGuardado();
-        if (token) await enviarTokenPush("DELETE", token);
-      } catch {
-        // Push es opcional; no se retiene el JWT para reintentar.
+        // 1) Baja el token de push del dispositivo. Mejor esfuerzo.
+        try {
+          const token = await NotificacionesService.tokenGuardado();
+          if (token) await enviarTokenPush("DELETE", token);
+        } catch {
+          // Push es opcional; no se retiene el JWT para reintentar.
+        }
+        // 2) Invalida la sesión en el servidor con el JWT aún guardado. Mejor
+        //    esfuerzo: sin red o con 401 (ya cerrada o vencida) el cierre local sigue.
+        try {
+          await cerrarSesionEnServidor();
+        } catch {
+          // El JWT expira por sí solo si no se pudo revocar.
+        }
       } finally {
+        // 3) y 4) Siempre se ejecutan: olvida el token de push y borra el JWT.
         registroPush = null;
+        try {
+          await NotificacionesService.olvidarToken();
+        } catch {
+          // No debe impedir borrar el JWT.
+        }
         await limpiarSesionLocal();
       }
     });
