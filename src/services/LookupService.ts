@@ -124,7 +124,7 @@ export const LookupService = {
     }
 
     const res = await fetchJSON(
-      `/api/visits/me?correo=${encodeURIComponent(session.correo)}`,
+      `/api/visits/lookup?correo=${encodeURIComponent(session.correo)}`,
       { headers: { Authorization: `Bearer ${session.accessToken}` } },
     );
 
@@ -139,7 +139,13 @@ export const LookupService = {
 
     const body = await res.json();
     const visitas = body.data ?? body;
-    return Array.isArray(visitas) ? visitas : [];
+    if (!Array.isArray(visitas)) return [];
+    // El lookup devuelve el departamento como "Departamentos"; la pantalla
+    // usa "departamento", igual que /api/visits/me.
+    return visitas.map((v) => ({
+      ...v,
+      departamento: v.departamento ?? v.Departamentos,
+    }));
   },
 
   async cerrarSesion(): Promise<void> {
