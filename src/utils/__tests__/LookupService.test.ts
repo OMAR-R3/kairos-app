@@ -68,9 +68,9 @@ describe("LookupService", () => {
   });
 
   it("lanza error si se intenta verificar sin solicitar primero", async () => {
-    await expect(
-      LookupService.verificarCodigo("12345678"),
-    ).rejects.toThrow("Primero solicita");
+    await expect(LookupService.verificarCodigo("12345678")).rejects.toThrow(
+      "Primero solicita",
+    );
   });
 
   it("lanza CodigoInvalidoError en 401 al verificar", async () => {
@@ -122,9 +122,35 @@ describe("LookupService", () => {
     expect(visitas[0].id).toBe(1);
 
     const [url, opts] = mockFetch.mock.calls[2];
-    expect(url).toContain("/api/visits/me");
+    expect(url).toContain("/api/visits/lookup?correo=");
+    expect(url).not.toContain("/api/visits/me");
     expect(url).toContain("correo=hist%40mail.com");
     expect(opts.headers.Authorization).toBe("Bearer tok-hist");
+  });
+
+  it("acepta el departamento que llega como Departamentos del lookup", async () => {
+    mockFetch.mockResolvedValueOnce(
+      respuesta(202, { challengeId: "ch-7", browserSecret: "sec-7" }),
+    );
+    await LookupService.solicitarCodigo("depto@mail.com");
+    mockFetch.mockResolvedValueOnce(
+      respuesta(200, { accessToken: "tok-depto", expiresIn: 900 }),
+    );
+    await LookupService.verificarCodigo("77777777");
+
+    mockFetch.mockResolvedValueOnce(
+      respuesta(200, {
+        data: [
+          {
+            id: 2,
+            estado: "aprobada",
+            Departamentos: { nombre: "CIUT", ubicacion: "Edificio C" },
+          },
+        ],
+      }),
+    );
+    const visitas = await LookupService.obtenerHistorial();
+    expect(visitas[0].departamento?.nombre).toBe("CIUT");
   });
 
   it("lanza SesionLookupExpiradaError sin sesion activa", async () => {
