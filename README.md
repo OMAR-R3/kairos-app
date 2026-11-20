@@ -48,6 +48,50 @@ In the output, you'll find options to open the app in a
 
 You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
 
+## Build de desarrollo (development build)
+
+La app **no corre en Expo Go**: desde el SDK 53 Expo Go no soporta notificaciones push remotas y el proyecto usa módulos nativos (`expo-notifications`, `expo-secure-store`, `react-native-svg`, entre otros). Por eso se usa un *development build* con [`expo-dev-client`](https://docs.expo.dev/develop/development-builds/introduction/), que ya está en `package.json` y `package-lock.json`.
+
+### Generar el build (Android)
+
+1. Instalar dependencias con la versión bloqueada: `npm ci`.
+2. Iniciar sesión en Expo con una cuenta del equipo (proyecto `r3mat3rs-team`):
+
+   ```bash
+   npx eas-cli login
+   ```
+
+3. Generar el build con el perfil `development` de `eas.json` (`developmentClient: true`, distribución interna):
+
+   ```bash
+   npx eas-cli build --profile development --platform android
+   ```
+
+4. Al terminar, EAS entrega un enlace y un código QR para descargar e instalar el APK en el celular.
+
+### Usarlo en el día a día
+
+1. Copiar `.env.example` a `.env` y poner la URL de la API en `EXPO_PUBLIC_API_URL`.
+2. Iniciar Metro en modo *dev client* (no usar las opciones `w` ni `s`):
+
+   ```bash
+   npx expo start --dev-client
+   ```
+
+3. Abrir la app instalada en el celular y escanear el QR de la terminal. Los cambios en código JS/TS se ven al instante, sin generar otro build.
+
+### Cuándo hay que regenerarlo
+
+Solo cuando cambia la parte nativa de la app:
+
+- Se agrega, quita o actualiza un paquete con código nativo (`expo-*`, `react-native-*`).
+- Cambia `app.json` en algo nativo: `plugins`, permisos, `package`, ícono o splash, `google-services.json`.
+- Se actualiza la versión del SDK de Expo.
+
+**No** hace falta para cambios de pantallas, lógica, estilos, pruebas ni del archivo `.env` (en ese caso basta reiniciar Metro con `npx expo start --dev-client -c`).
+
+Después de regenerarlo hay que instalar el APK nuevo. Si se cambian dependencias, `package.json` y `package-lock.json` se suben juntos en el mismo commit, porque EAS instala con `npm ci` y falla si no están sincronizados.
+
 ## Pruebas y linter
 
 ```bash
