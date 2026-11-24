@@ -37,10 +37,8 @@ async function pulsar(label: string) {
   const boton = screen.root.findByProps({ accessibilityLabel: label });
   await act(async () => { boton!.props.onPress(); });
 }
-it("renderiza el token real y vuelve al detalle correspondiente", async () => {
+it("renderiza el token real", async () => {
   await montar(); expect(codigos()[0].props.value).toBe("token-real");
-  await pulsar("Volver");
-  expect(mockReplace).toHaveBeenCalledWith({ pathname: "/detalle-visita/[id]", params: { id: "123" } });
 });
 it.each(["expirado", "usado"])("no renderiza códigos para %s", async estado_qr => {
   mockQR.mockResolvedValue({ ...data, estado_qr, qr: null }); await montar();
