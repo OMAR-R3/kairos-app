@@ -229,7 +229,7 @@ it("conserva el registro push y su desvinculación con el JWT vigente", async ()
 
 it("no persiste contratos inválidos ni errores HTTP", async () => {
   mockFetch.mockResolvedValue(response(200, { success: true, data: { ...qr, qr: null } }));
-  await expect(service.obtenerQR("123")).rejects.toThrow("respuesta");
+  await expect(service.obtenerQR("123")).rejects.toThrow("No se pudo mostrar el código QR. Inténtalo de nuevo.");
   mockFetch.mockResolvedValue(response(403, { error: "Prohibido" }));
   await expect(service.obtenerQR("123")).rejects.toThrow("Prohibido");
   expect(mockSet).not.toHaveBeenCalled();

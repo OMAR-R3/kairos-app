@@ -17,7 +17,7 @@ export default function ConfirmacionScreen() {
         </View>
 
         <Text style={styles.info}>
-          Recibirás una notificación cuando tu visita sea aprobada
+          Recibirás una notificación cuando se apruebe tu visita.
         </Text>
       </View>
 

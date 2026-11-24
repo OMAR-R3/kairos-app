@@ -52,7 +52,7 @@ export default function useNotificationNavigation() {
       if (accion.tipo === "navegar") {
         router.push(`/detalle-visita/${accion.visitaId}` as Href);
       } else if (accion.tipo === "sesion-expirada") {
-        Alert.alert("Sesión expirada", "Tu sesión expiró, inicia sesión de nuevo");
+        Alert.alert("Sesión expirada", "Tu sesión expiró. Vuelve a iniciar sesión.");
         router.replace("/");
       }
     });

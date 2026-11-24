@@ -84,7 +84,7 @@ export type Visita = {
 };
 
 export class SesionExpiradaError extends Error {
-  constructor(mensaje = "Tu sesión expiró, inicia sesión de nuevo") {
+  constructor(mensaje = "Tu sesión expiró. Vuelve a iniciar sesión.") {
     super(mensaje);
     this.name = "SesionExpiradaError";
   }
@@ -198,7 +198,7 @@ async function peticionAutenticada(
       }
       if (fallo)
         throw new SesionExpiradaError(
-          "Tu sesión expiró. No se pudieron eliminar todos los datos locales; intenta cerrar sesión de nuevo.",
+          "Tu sesión expiró. No se pudieron eliminar todos los datos locales. Intenta cerrar sesión de nuevo.",
         );
     }
     throw new SesionExpiradaError();
@@ -260,7 +260,7 @@ export const VisitasService = {
       throw new Error(
         typeof body?.error === "string"
           ? body.error
-          : "No se pudo obtener el código QR.",
+          : "No se pudo obtener el código QR. Inténtalo de nuevo.",
       );
     }
     const data = body?.data;
@@ -286,7 +286,7 @@ export const VisitasService = {
         : data.qr !== null)
     ) {
       throw new Error(
-        "La respuesta del código QR no es válida. Inténtalo de nuevo.",
+        "No se pudo mostrar el código QR. Inténtalo de nuevo.",
       );
     }
     const comprobarConsulta = () => {
@@ -339,15 +339,15 @@ export const VisitasService = {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(datos),
-    });
+    }).catch(() => { throw new ErrorConexion(); });
 
     if (res.status === 409)
-      throw new Error("Ya existe una cuenta con ese correo");
+      throw new Error("Ya existe una cuenta con ese correo. Inicia sesión con esa cuenta.");
     if (res.status === 429)
-      throw new Error("Demasiados intentos, intenta más tarde");
+      throw new Error("Demasiados intentos. Inténtalo más tarde.");
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
-      throw new Error(body.error ?? "No se pudo crear la cuenta");
+      throw new Error(body?.error ?? "No se pudo crear la cuenta. Inténtalo de nuevo.");
     }
   },
 
@@ -356,17 +356,19 @@ export const VisitasService = {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(datos),
-    });
+    }).catch(() => { throw new ErrorConexion(); });
 
-    if (res.status === 401) throw new Error("Correo o contraseña incorrectos");
+    if (res.status === 401) throw new Error("El correo o la contraseña son incorrectos.");
     if (res.status === 429)
-      throw new Error("Demasiados intentos, intenta más tarde");
+      throw new Error("Demasiados intentos. Inténtalo más tarde.");
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
-      throw new Error(body.error ?? "No se pudo iniciar sesión");
+      throw new Error(body?.error ?? "No se pudo iniciar sesión. Inténtalo de nuevo.");
     }
 
-    const { token, visitante } = await res.json();
+    const { token, visitante } = await res.json().catch(() => {
+      throw new Error("No se pudo iniciar sesión. Inténtalo de nuevo.");
+    });
     generacionSesion += 1;
     cerrandoSesion = true;
     QRCacheService.revocar();
@@ -381,15 +383,17 @@ export const VisitasService = {
   },
 
   async obtenerDepartamentos(): Promise<Departamento[]> {
+    const mensaje = "No se pudieron cargar los departamentos.";
     const res = await peticionAutenticada("/api/department");
 
+    const body = await res.json().catch(() => null);
     if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      throw new Error(body.error ?? "No se pudieron cargar los departamentos");
+      throw new Error(body?.error ?? mensaje);
     }
 
-    const body = await res.json();
-    return body.data ?? body;
+    const departamentos = body?.data ?? body;
+    if (!Array.isArray(departamentos)) throw new Error(mensaje);
+    return departamentos;
   },
 
   async agendarVisita(
@@ -402,30 +406,33 @@ export const VisitasService = {
     });
 
     if (res.status === 409)
-      throw new Error("Ya tienes una visita registrada con esos datos");
+      throw new Error("Ya tienes una visita registrada con esos datos. Revisa Mis visitas.");
     if (res.status === 429)
-      throw new Error("Demasiados intentos, intenta más tarde");
+      throw new Error("Demasiados intentos. Inténtalo más tarde.");
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
-      throw new Error(body.error ?? "No se pudo agendar la visita");
+      throw new Error(body?.error ?? "No se pudo enviar la solicitud de visita. Inténtalo de nuevo.");
     }
 
-    const body = await res.json();
+    const body = await res.json().catch(() => {
+      throw new Error("No se pudo confirmar el envío. Revisa Mis visitas antes de volver a enviar la solicitud.");
+    });
     const visita: Visita = body.data ?? body;
     return { visita, folio: generarFolio(visita.id) };
   },
 
   async obtenerMisVisitas(): Promise<Visita[]> {
+    const mensaje = "No se pudieron cargar las visitas. Inténtalo de nuevo.";
     const res = await peticionAutenticada("/api/visits/me");
 
+    const body = await res.json().catch(() => null);
     if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      throw new Error(body.error ?? "No se pudieron cargar las visitas");
+      throw new Error(body?.error ?? mensaje);
     }
 
-    const body = await res.json();
-    const visitas = body.data ?? body;
-    return Array.isArray(visitas) ? visitas : [];
+    const visitas = body?.data ?? body;
+    if (!Array.isArray(visitas)) throw new Error(mensaje);
+    return visitas;
   },
 
   async obtenerDetalleVisita(id: string): Promise<DetalleVisita> {
@@ -440,14 +447,14 @@ export const VisitasService = {
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
       throw new Error(
-        body.error ??
+        body?.error ??
           "No fue posible cargar los detalles de la visita. Inténtalo de nuevo.",
       );
     }
 
-    const body: { success: boolean; data: DetalleVisita | null } =
-      await res.json();
-    if (!body.success || !body.data) {
+    const body: { success: boolean; data: DetalleVisita | null } | null =
+      await res.json().catch(() => null);
+    if (!body?.success || !body.data) {
       throw new Error(
         "No fue posible cargar los detalles de la visita. Inténtalo de nuevo.",
       );

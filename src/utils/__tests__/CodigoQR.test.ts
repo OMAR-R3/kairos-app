@@ -27,11 +27,11 @@ it.each([
   { vigente_hasta: valido.vigente_desde },
 ])("rechaza contrato inconsistente %j", async cambio => {
   mockFetch.mockResolvedValue(respuesta(200, { success: true, data: { ...valido, ...cambio } }));
-  await expect(VisitasService.obtenerQR("123")).rejects.toThrow("respuesta");
+  await expect(VisitasService.obtenerQR("123")).rejects.toThrow("No se pudo mostrar el código QR. Inténtalo de nuevo.");
 });
 it.each([null, {}, { success: false, data: valido }, { success: true, data: null }])("rechaza envoltorio inválido %j", async body => {
   mockFetch.mockResolvedValue(respuesta(200, body));
-  await expect(VisitasService.obtenerQR("123")).rejects.toThrow("respuesta");
+  await expect(VisitasService.obtenerQR("123")).rejects.toThrow("No se pudo mostrar el código QR. Inténtalo de nuevo.");
 });
 it("mantiene el manejo de sesión expirada", async () => {
   mockFetch.mockResolvedValue(respuesta(401, {}));
@@ -55,5 +55,5 @@ it("maneja desconexión y propaga la señal de cancelación", async () => {
 });
 it("maneja JSON ilegible", async () => {
   mockFetch.mockResolvedValue({ ...respuesta(200, null), json: async () => { throw new SyntaxError(); } });
-  await expect(VisitasService.obtenerQR("123")).rejects.toThrow("respuesta");
+  await expect(VisitasService.obtenerQR("123")).rejects.toThrow("No se pudo mostrar el código QR. Inténtalo de nuevo.");
 });

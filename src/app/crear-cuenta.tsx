@@ -51,13 +51,13 @@ export default function CrearCuentaScreen() {
     setLoading(true);
     try {
       await VisitasService.registrarVisitante(values);
-      Alert.alert("Cuenta creada", "Ya puedes iniciar sesión con tu correo.", [
+      Alert.alert("Cuenta creada", "Ya puedes iniciar sesión con tu correo electrónico.", [
         // Regresa a Login. Si en Figma va directo a Inicio, cambiar a "/inicio"
         { text: "Aceptar", onPress: () => router.replace("/") },
       ]);
     } catch (e) {
-      const mensaje = e instanceof Error ? e.message : "No se pudo crear la cuenta";
-      Alert.alert("Error", mensaje);
+      const mensaje = e instanceof Error ? e.message : "No se pudo crear la cuenta. Inténtalo de nuevo.";
+      Alert.alert("No se pudo crear la cuenta", mensaje);
     } finally {
       setLoading(false);
     }
@@ -70,7 +70,7 @@ export default function CrearCuentaScreen() {
         style={{ flex: 1 }}
       >
         <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.scroll}>
-          <Campo label="Nombre(s)" value={form.nombre} onChangeText={setCampo("nombre")}
+          <Campo label="Nombre" value={form.nombre} onChangeText={setCampo("nombre")}
             error={errors.nombre} autoCapitalize="words" />
           <Campo label="Apellido paterno" value={form.apellidoPaterno}
             onChangeText={setCampo("apellidoPaterno")} error={errors.apellidoPaterno}
