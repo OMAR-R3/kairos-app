@@ -13,6 +13,7 @@ import type { Href } from "expo-router";
 import Screen from "../components/Screen";
 import {
   Departamento,
+  ErrorConexion,
   SesionExpiradaError,
   Visita,
   VisitasService,
@@ -64,6 +65,19 @@ function VisitaCard({
   );
 }
 
+function AvisoSinConexion({ onReintentar }: { onReintentar: () => void }) {
+  return (
+    <View style={styles.avisoConexion}>
+      <Text style={styles.avisoTexto}>
+        Sin conexión. Mostrando la última actualización.
+      </Text>
+      <Pressable accessibilityRole="button" onPress={onReintentar} style={styles.avisoBoton}>
+        <Text style={styles.avisoBotonTexto}>Reintentar</Text>
+      </Pressable>
+    </View>
+  );
+}
+
 function ListaVacia() {
   return (
     <View style={styles.emptyContainer}>
@@ -83,15 +97,24 @@ export default function MisVisitasScreen() {
   const [deptos, setDeptos] = useState<Record<string, string>>({});
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [sinConexion, setSinConexion] = useState(false);
 
   const cargarDatos = useCallback(async () =>{
     setCargando(true);
     setError(null);
     try {
+      let conexionDisponible = true;
       const [listaVisitas, listaDepartamentos] = await Promise.all([
         VisitasService.obtenerMisVisitas(),
-        VisitasService.obtenerDepartamentos(),
+        VisitasService.obtenerDepartamentos().catch((error: unknown) => {
+          if (error instanceof ErrorConexion) {
+            conexionDisponible = false;
+            return [];
+          }
+          throw error;
+        }),
       ]);
+      setSinConexion(!conexionDisponible);
 
       const mapa: Record<string, string> = {};
       listaDepartamentos.forEach((d: Departamento) => {
@@ -163,8 +186,9 @@ export default function MisVisitasScreen() {
             }
           />
         )}
+        ListHeaderComponent={sinConexion ? <AvisoSinConexion onReintentar={cargarDatos} /> : null}
         ListEmptyComponent={ListaVacia}
-        contentContainerStyle={visitas.length === 0 ? styles.emptyList : styles.list}
+        contentContainerStyle={visitas.length === 0 && !sinConexion ? styles.emptyList : styles.list}
         showsVerticalScrollIndicator={false}
       />
     </Screen>
@@ -256,5 +280,32 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontWeight: "700",
     fontSize: 15,
+  },
+  avisoConexion: {
+    backgroundColor: "#FEF3C7",
+    borderRadius: 10,
+    padding: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+    marginBottom: 12,
+  },
+  avisoTexto: {
+    flex: 1,
+    fontSize: 13,
+    color: "#92400E",
+    fontWeight: "500",
+  },
+  avisoBoton: {
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: "#F59E0B",
+  },
+  avisoBotonTexto: {
+    color: "#FFFFFF",
+    fontSize: 13,
+    fontWeight: "700",
   },
 });
