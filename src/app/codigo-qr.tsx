@@ -144,6 +144,11 @@ export default function CodigoQrScreen() {
     else if (ahora < Date.parse(datos.vigente_desde)) estado = "anticipado";
   }
   const config = ESTADO_QR_CONFIG[estado];
+  const volver = () => {
+    if (vigenteId) router.replace({ pathname: "/detalle-visita/[id]", params: { id } });
+    else router.replace("/mis-visitas");
+  };
+
   const qrDeshabilitado = estado !== "valido";
   return (
     <View style={styles.container}>
@@ -194,6 +199,9 @@ export default function CodigoQrScreen() {
           <Text style={styles.volverButtonText}>{error ? "Reintentar" : "Actualizar estado"}</Text>
         </Pressable>}
         {bloqueado && !cargando && <Text style={styles.subtitle}>Podrás actualizar nuevamente en unos segundos.</Text>}
+        <Pressable accessibilityRole="button" accessibilityLabel="Volver" style={styles.volverButton} onPress={volver}>
+          <Text style={styles.volverButtonText}>Volver</Text>
+        </Pressable>
       </ScrollView>
     </View>
   );
