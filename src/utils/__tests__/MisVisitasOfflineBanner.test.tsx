@@ -19,8 +19,11 @@ afterEach(() => {
   jest.restoreAllMocks();
 });
 
-function contenido() {
-  return JSON.stringify(pantalla.toJSON());
+function contenido(): string {
+  return pantalla.root
+    .findAll(() => true)
+    .flatMap(node => node.children.filter((c): c is string => typeof c === "string"))
+    .join(" ");
 }
 
 it("muestra el aviso sin conexión cuando las visitas se cargan del caché", async () => {
@@ -38,7 +41,7 @@ it("muestra el aviso sin conexión cuando las visitas se cargan del caché", asy
 
 it("oculta el aviso cuando hay conexión", async () => {
   jest.spyOn(VisitasService, "obtenerMisVisitas").mockResolvedValue([visita]);
-  jest.spyOn(VisitasService, "obtenerDepartamentos").mockResolvedValue([{ id: 2, nombre: "Vinculación" }]);
+  jest.spyOn(VisitasService, "obtenerDepartamentos").mockResolvedValue([{ id: 2, nombre: "Vinculación", ubicacion: "Edificio A" }]);
 
   await act(async () => { pantalla = create(<MisVisitasScreen />); });
 
@@ -55,12 +58,12 @@ it("el aviso desaparece al reintentar con conexión restaurada", async () => {
   await act(async () => { pantalla = create(<MisVisitasScreen />); });
   expect(contenido()).toContain("Sin conexión");
 
-  mockDeptos.mockResolvedValueOnce([{ id: 2, nombre: "Vinculación" }]);
-  const botonReintentar = pantalla.root.findAll(
-    ({ props }) => props.accessibilityRole === "button" && props.onPress,
-  ).find(node => JSON.stringify(node.toJSON()).includes("Reintentar"));
+  mockDeptos.mockResolvedValueOnce([{ id: 2, nombre: "Vinculación", ubicacion: "Edificio A" }]);
+  const botonReintentar = pantalla.root.find(
+    ({ props }) => props.accessibilityRole === "button" && typeof props.onPress === "function",
+  );
 
-  await act(async () => { botonReintentar!.props.onPress(); });
+  await act(async () => { botonReintentar.props.onPress(); });
   expect(contenido()).not.toContain("Sin conexión");
   expect(contenido()).toContain("Reunión");
 });
