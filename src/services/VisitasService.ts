@@ -2,6 +2,7 @@
 // La app nunca habla directo con Supabase.
 
 import * as SecureStore from "expo-secure-store";
+import { esListaDeVisitas, HistorialCacheService } from "./HistorialCacheService";
 import { NotificacionesService } from "./NotificacionesService";
 import { QRCacheService, QRGuardado } from "./QRCacheService";
 
@@ -24,6 +25,7 @@ async function limpiarSesionLocal(): Promise<void> {
   const resultados = await Promise.allSettled([
     SecureStore.deleteItemAsync(TOKEN_KEY),
     QRCacheService.limpiar(),
+    HistorialCacheService.limpiar(),
   ]);
   if (resultados.some((r) => r.status === "rejected")) {
     throw new Error(
@@ -80,7 +82,7 @@ export type Visita = {
   hora_inicio: string;
   motivo: string;
   estado: "pendiente" | "aprobada" | "rechazada" | "cancelada" | "finalizada";
-  departamento?: { id: number; nombre: string };
+  departamento?: { id: number; nombre: string } | null;
 };
 
 export class SesionExpiradaError extends Error {
@@ -124,16 +126,34 @@ export function esIdVisitaValido(id: unknown): id is string {
   );
 }
 
-// Revisa la fecha de expiración del JWT sin llamar al servidor.
-function tokenVigente(token: string): boolean {
+function leerPayload(token: string): Record<string, unknown> | null {
   try {
     const parte = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
     const relleno = parte + "=".repeat((4 - (parte.length % 4)) % 4);
-    const payload = JSON.parse(atob(relleno));
-    return !payload.exp || payload.exp * 1000 > Date.now();
+    return JSON.parse(atob(relleno));
   } catch {
-    return false;
+    return null;
   }
+}
+
+// Revisa la fecha de expiración del JWT sin llamar al servidor.
+function tokenVigente(token: string): boolean {
+  const payload = leerPayload(token);
+  return !!payload && (!payload.exp || Number(payload.exp) * 1000 > Date.now());
+}
+
+function identidadHistorial(token: string | null): { titular: string; venceEn: number } | null {
+  const payload = token ? leerPayload(token) : null;
+  // La caché exige un JWT vigente y un identificador del visitante. No guarda el JWT.
+  if (!payload || (typeof payload.exp !== "number" && typeof payload.exp !== "string")) return null;
+  const venceEn = Number(payload.exp) * 1000;
+  if (!Number.isFinite(venceEn) || venceEn <= Date.now()) return null;
+  const id = payload.visitante_id ?? payload.sub ?? payload.id;
+  if (typeof id === "string" && id.trim()) return { titular: id, venceEn };
+  if (typeof id === "number" && Number.isSafeInteger(id) && id > 0) {
+    return { titular: String(id), venceEn };
+  }
+  return null;
 }
 
 async function peticionAutenticada(
@@ -143,10 +163,11 @@ async function peticionAutenticada(
     body?: unknown;
     conservarSesion?: boolean;
     signal?: AbortSignal;
+    token?: string | null;
   } = {},
 ): Promise<Response> {
   const generacion = generacionSesion;
-  const token = await SecureStore.getItemAsync(TOKEN_KEY);
+  const token = opciones.token !== undefined ? opciones.token : await SecureStore.getItemAsync(TOKEN_KEY);
 
   let res: Response;
   try {
@@ -269,7 +290,7 @@ export const VisitasService = {
       /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/.test(value) &&
       Number.isFinite(Date.parse(value)) &&
       new Date(value).toISOString() ===
-        value.replace(/Z$/, value.includes(".") ? "Z" : ".000Z");
+      value.replace(/Z$/, value.includes(".") ? "Z" : ".000Z");
     if (
       body?.success !== true ||
       !data ||
@@ -422,16 +443,45 @@ export const VisitasService = {
   },
 
   async obtenerMisVisitas(): Promise<Visita[]> {
-    const mensaje = "No se pudieron cargar las visitas. Inténtalo de nuevo.";
-    const res = await peticionAutenticada("/api/visits/me");
+    const generacion = generacionSesion;
+    const sesionActiva = () => generacion === generacionSesion && !cerrandoSesion;
+    const comprobarSesion = () => {
+      if (sesionActiva()) return;
+      const error = new Error("La sesión de la consulta cambió.");
+      error.name = "AbortError";
+      throw error;
+    };
+    const token = await SecureStore.getItemAsync(TOKEN_KEY);
+    comprobarSesion();
+    const identidad = identidadHistorial(token);
+    const puedeUsarCache = () => sesionActiva() && identidad !== null && identidad.venceEn > Date.now();
 
-    const body = await res.json().catch(() => null);
-    if (!res.ok) {
-      throw new Error(body?.error ?? mensaje);
+    let res: Response;
+    try {
+      res = await peticionAutenticada("/api/visits/me", { token });
+    } catch (error) {
+      if (!(error instanceof ErrorConexion) || !identidad || !puedeUsarCache()) throw error;
+      const guardadas = await HistorialCacheService.leer(identidad.titular, puedeUsarCache).catch(() => null);
+      comprobarSesion();
+      if (guardadas !== null && puedeUsarCache()) return guardadas;
+      throw error;
     }
 
-    const visitas = body?.data ?? body;
-    if (!Array.isArray(visitas)) throw new Error(mensaje);
+    const body = await res.json().catch(() => null);
+    comprobarSesion();
+    if (!res.ok) {
+      throw new Error(body?.error ?? "No se pudieron cargar las visitas. Inténtalo de nuevo.");
+    }
+
+    const visitas: unknown = body?.data ?? body;
+    if (body?.success === false || !esListaDeVisitas(visitas)) {
+      throw new Error("No se pudieron cargar las visitas. Inténtalo de nuevo.");
+    }
+
+    if (identidad) {
+      await HistorialCacheService.guardar(visitas, identidad.titular, puedeUsarCache).catch(() => undefined);
+    }
+    comprobarSesion();
     return visitas;
   },
 
@@ -448,7 +498,7 @@ export const VisitasService = {
       const body = await res.json().catch(() => ({}));
       throw new Error(
         body?.error ??
-          "No fue posible cargar los detalles de la visita. Inténtalo de nuevo.",
+        "No fue posible cargar los detalles de la visita. Inténtalo de nuevo.",
       );
     }
 
@@ -533,10 +583,7 @@ export const VisitasService = {
   async obtenerDatosSesion(): Promise<Record<string, unknown> | null> {
     try {
       const token = await SecureStore.getItemAsync(TOKEN_KEY);
-      if (!token) return null;
-      const parte = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
-      const relleno = parte + "=".repeat((4 - (parte.length % 4)) % 4);
-      return JSON.parse(atob(relleno));
+      return token ? leerPayload(token) : null;
     } catch {
       return null;
     }
