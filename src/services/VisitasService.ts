@@ -10,6 +10,7 @@ const API_URL = process.env.EXPO_PUBLIC_API_URL;
 const TOKEN_KEY = "kairos_visitante_token";
 let generacionSesion = 0;
 let cerrandoSesion = false;
+let _ultimaConsultaOffline = false;
 let registroPush: string | null = null;
 let colaPush: Promise<unknown> = Promise.resolve();
 
@@ -463,7 +464,10 @@ export const VisitasService = {
       if (!(error instanceof ErrorConexion) || !identidad || !puedeUsarCache()) throw error;
       const guardadas = await HistorialCacheService.leer(identidad.titular, puedeUsarCache).catch(() => null);
       comprobarSesion();
-      if (guardadas !== null && puedeUsarCache()) return guardadas;
+      if (guardadas !== null && puedeUsarCache()) {
+        _ultimaConsultaOffline = true;
+        return guardadas;
+      }
       throw error;
     }
 
@@ -477,6 +481,8 @@ export const VisitasService = {
     if (body?.success === false || !esListaDeVisitas(visitas)) {
       throw new Error("No se pudieron cargar las visitas. Inténtalo de nuevo.");
     }
+
+    _ultimaConsultaOffline = false;
 
     if (identidad) {
       await HistorialCacheService.guardar(visitas, identidad.titular, puedeUsarCache).catch(() => undefined);
@@ -544,6 +550,8 @@ export const VisitasService = {
       }
     });
   },
+
+  ultimaConsultaOffline: () => _ultimaConsultaOffline,
 
   generacionSesionPush: () => generacionSesion,
 
