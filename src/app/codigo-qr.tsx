@@ -16,12 +16,12 @@ type EstadoConfig = {
 };
 
 const ESTADO_QR_CONFIG: Record<EstadoQR, EstadoConfig> = {
-  anticipado: { bg: "#FEF3C7", text: "#92400E", label: "Aún no vigente", mensaje: "El código estará disponible al iniciar su ventana de vigencia.", icono: "⎘", overlay: "Aún no vigente" },
+  anticipado: { bg: "#FEF3C7", text: "#92400E", label: "Aún no vigente", mensaje: "El código estará disponible a partir de la fecha y hora de inicio de su vigencia.", icono: "⎘", overlay: "Aún no vigente" },
   valido: {
     bg: "#D1FAE5",
     text: "#065F46",
     label: "Válido",
-    mensaje: "Muestra este código en la caseta de vigilancia",
+    mensaje: "Muestra este código en la caseta de vigilancia.",
     icono: "✓",
     overlay: "",
   },
@@ -95,7 +95,7 @@ export default function CodigoQrScreen() {
         Alert.alert("Sesión expirada", err.message);
         router.replace("/");
       } else {
-        setError(agotoTiempo ? "La consulta tardó demasiado. No hay un QR guardado disponible." : err instanceof Error ? err.message : "No se pudo obtener el código QR.");
+        setError(agotoTiempo ? "La consulta tardó demasiado y no hay un código QR guardado. Inténtalo de nuevo." : err instanceof Error ? err.message : "No se pudo obtener el código QR. Inténtalo de nuevo.");
       }
     } finally {
       clearTimeout(timeout);
@@ -162,7 +162,7 @@ export default function CodigoQrScreen() {
         {datos && !cargando && !error && <>
         {comprobacionGuardada !== null && <>
           <Text accessibilityRole="alert" style={styles.subtitle}>Sin conexión · QR no verificado</Text>
-          <Text style={styles.subtitle}>Última comprobación: {new Date(comprobacionGuardada).toLocaleString("es-MX", { timeZone: "America/Mexico_City" })} (hora de Ciudad de México). Puede haber sido utilizado desde entonces.</Text>
+          <Text style={styles.subtitle}>Última comprobación: {new Date(comprobacionGuardada).toLocaleString("es-MX", { timeZone: "America/Mexico_City" })} (hora de la Ciudad de México). Puede haber sido utilizado desde entonces.</Text>
         </>}
         <Text style={styles.subtitle}>{config.mensaje}</Text>
 
@@ -193,7 +193,7 @@ export default function CodigoQrScreen() {
 
         <Text style={styles.folio}>Folio {datos.folio}</Text>
 
-        <Text style={styles.subtitle}>Vigencia: {new Date(datos.vigente_desde).toLocaleString("es-MX", { timeZone: "America/Mexico_City" })} – {new Date(datos.vigente_hasta).toLocaleString("es-MX", { timeZone: "America/Mexico_City" })} (hora de Ciudad de México)</Text>
+        <Text style={styles.subtitle}>Vigencia: {new Date(datos.vigente_desde).toLocaleString("es-MX", { timeZone: "America/Mexico_City" })} – {new Date(datos.vigente_hasta).toLocaleString("es-MX", { timeZone: "America/Mexico_City" })} (hora de la Ciudad de México)</Text>
         </>}
         {vigenteId && <Pressable accessibilityRole="button" accessibilityLabel={error ? "Reintentar" : "Actualizar estado"} disabled={cargando || bloqueado} style={[styles.volverButton, (cargando || bloqueado) && styles.disabled]} onPress={() => void cargar()}>
           <Text style={styles.volverButtonText}>{error ? "Reintentar" : "Actualizar estado"}</Text>

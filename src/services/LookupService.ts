@@ -23,7 +23,7 @@ let session: Session | null = null;
 
 export class CodigoInvalidoError extends Error {
   constructor(mensaje?: string) {
-    super(mensaje ?? "El codigo es incorrecto o ya vencio");
+    super(mensaje ?? "El código es incorrecto o ya venció.");
     this.name = "CodigoInvalidoError";
   }
 }
@@ -37,7 +37,7 @@ export class DemasiadosIntentosError extends Error {
 
 export class SesionLookupExpiradaError extends Error {
   constructor() {
-    super("Tu sesion de consulta expiro. Solicita un nuevo codigo.");
+    super("Tu sesión de consulta expiró. Solicita un nuevo código.");
     this.name = "SesionLookupExpiradaError";
   }
 }
@@ -56,7 +56,7 @@ async function fetchJSON(
     });
   } catch {
     throw new Error(
-      "No se pudo conectar. Revisa tu conexion e intentalo de nuevo.",
+      "No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.",
     );
   }
 }
@@ -72,11 +72,13 @@ export const LookupService = {
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
       throw new Error(
-        body.error ?? "No se pudo enviar el codigo de verificacion",
+        body?.error ?? "No se pudo enviar el código de verificación. Inténtalo de nuevo.",
       );
     }
 
-    const body = await res.json();
+    const body = await res.json().catch(() => {
+      throw new Error("No se pudo confirmar el envío del código. Inténtalo de nuevo.");
+    });
     challenge = {
       challengeId: body.challengeId,
       browserSecret: body.browserSecret,
@@ -86,7 +88,7 @@ export const LookupService = {
 
   async verificarCodigo(code: string): Promise<void> {
     if (!challenge)
-      throw new Error("Primero solicita un codigo de verificacion");
+      throw new Error("Solicita un nuevo código de verificación.");
 
     const res = await fetchJSON("/api/visits/lookup/verify-code", {
       method: "POST",
@@ -99,15 +101,17 @@ export const LookupService = {
 
     if (res.status === 401) {
       const body = await res.json().catch(() => ({}));
-      throw new CodigoInvalidoError(body.error);
+      throw new CodigoInvalidoError(body?.error);
     }
     if (res.status === 429) throw new DemasiadosIntentosError();
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
-      throw new Error(body.error ?? "No se pudo verificar el codigo");
+      throw new Error(body?.error ?? "No se pudo verificar el código. Inténtalo de nuevo.");
     }
 
-    const body = await res.json();
+    const body = await res.json().catch(() => {
+      throw new Error("No se pudo verificar el código. Solicita uno nuevo para volver a intentarlo.");
+    });
     session = {
       accessToken: body.accessToken,
       correo: challenge.correo,
@@ -117,6 +121,7 @@ export const LookupService = {
   },
 
   async obtenerHistorial(): Promise<Visita[]> {
+    const mensaje = "No se pudo cargar el historial. Solicita un nuevo código para volver a intentarlo.";
     if (!session) throw new SesionLookupExpiradaError();
     if (Date.now() >= session.expiresAt) {
       session = null;
@@ -132,14 +137,11 @@ export const LookupService = {
       session = null;
       throw new SesionLookupExpiradaError();
     }
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      throw new Error(body.error ?? "No se pudo cargar el historial");
-    }
+    const body = await res.json().catch(() => null);
+    if (!res.ok) throw new Error(body?.error ?? mensaje);
 
-    const body = await res.json();
-    const visitas = body.data ?? body;
-    if (!Array.isArray(visitas)) return [];
+    const visitas = body?.data ?? body;
+    if (!Array.isArray(visitas)) throw new Error(mensaje);
     // El lookup devuelve el departamento como "Departamentos"; la pantalla
     // usa "departamento", igual que /api/visits/me.
     return visitas.map((v) => ({

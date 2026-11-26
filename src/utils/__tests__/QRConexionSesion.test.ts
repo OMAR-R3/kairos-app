@@ -125,7 +125,7 @@ describe("QR con conexión", () => {
     mockFetch.mockResolvedValue(
       response(200, { success: true, data: { ...qr, visita_id: 999 } }),
     );
-    await expect(service.obtenerQR("123")).rejects.toThrow("no es válida");
+    await expect(service.obtenerQR("123")).rejects.toThrow("No se pudo mostrar el código QR. Inténtalo de nuevo.");
     expect(mockDisk.has(CACHE)).toBe(false);
   });
 });

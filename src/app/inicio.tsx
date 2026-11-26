@@ -39,7 +39,7 @@ export default function InicioScreen() {
       await VisitasService.logout();
       router.replace("/");
     } catch {
-      Alert.alert("Error", "No se pudo cerrar la sesión");
+      Alert.alert("No se pudo cerrar la sesión", "Inténtalo de nuevo.");
     } finally {
       setLoading(false);
     }

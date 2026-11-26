@@ -32,6 +32,23 @@ describe("VisitasService visitas", () => {
     expect(mockFetch.mock.calls[0][1].headers.Authorization).toBe("Bearer token-prueba");
   });
 
+  it.each([
+    ["los departamentos", VisitasService.obtenerDepartamentos],
+    ["las visitas", VisitasService.obtenerMisVisitas],
+  ])("distingue una lista vacía de un error al cargar %s", async (nombre, cargar) => {
+    mockFetch.mockResolvedValueOnce(respuesta(200, { data: [] }));
+    await expect(cargar()).resolves.toEqual([]);
+
+    mockFetch.mockResolvedValueOnce(respuesta(200, { data: {} }));
+    await expect(cargar()).rejects.toThrow(`No se pudieron cargar ${nombre}`);
+  });
+
+  it("explica cómo recuperar la conexión al iniciar sesión", async () => {
+    mockFetch.mockRejectedValueOnce(new TypeError("Network request failed"));
+    await expect(VisitasService.login({ correo: "ana@correo.com", password: "password" }))
+      .rejects.toThrow("No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.");
+  });
+
   it("agenda visita y regresa folio", async () => {
     mockFetch.mockResolvedValue(respuesta(201, { success: true, data: { id: 21, estado: "pendiente" } }));
     const r = await VisitasService.agendarVisita({

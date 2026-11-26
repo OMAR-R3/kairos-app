@@ -18,7 +18,7 @@ export default function AvisoNotificaciones({
           <Text style={styles.icon}>🔔</Text>
           <Text style={styles.title}>Activar notificaciones</Text>
           <Text style={styles.body}>
-            Te avisaremos cuando tu visita sea aprobada o cancelada para que no
+            Te avisaremos cuando se apruebe o se cancele tu visita para que no
             tengas que revisar la app manualmente.
           </Text>
 

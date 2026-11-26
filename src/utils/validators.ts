@@ -62,34 +62,34 @@ const HORA_REGEX = /^\d{2}:\d{2}$/;
 export function validateVisitaForm(form: VisitaForm) {
   const errors: VisitaErrors = {};
 
-  if (!form.departamento) errors.departamento = "Selecciona un departamento";
+  if (!form.departamento) errors.departamento = "Selecciona un departamento.";
 
   if (!form.fecha) {
-    errors.fecha = "La fecha es obligatoria";
+    errors.fecha = "La fecha es obligatoria.";
   } else if (!FECHA_REGEX.test(form.fecha)) {
-    errors.fecha = "Formato inválido (AAAA-MM-DD)";
+    errors.fecha = "Usa el formato AAAA-MM-DD para la fecha.";
   } else {
     const date = new Date(form.fecha + "T00:00:00");
     if (isNaN(date.getTime())) {
-      errors.fecha = "Fecha no válida";
+      errors.fecha = "Selecciona una fecha válida.";
     } else if (date < new Date(new Date().toDateString())) {
-      errors.fecha = "La fecha no puede ser en el pasado";
+      errors.fecha = "Selecciona la fecha de hoy o una fecha posterior.";
     } else {
       const day = date.getDay();
-      if (day === 0 || day === 6) errors.fecha = "Solo se permiten días de lunes a viernes";
+      if (day === 0 || day === 6) errors.fecha = "Solo se permiten días de lunes a viernes.";
     }
   }
 
   if (!form.horaLlegada) {
-    errors.horaLlegada = "La hora es obligatoria";
+    errors.horaLlegada = "La hora es obligatoria.";
   } else if (!HORA_REGEX.test(form.horaLlegada)) {
-    errors.horaLlegada = "Formato inválido (HH:MM)";
+    errors.horaLlegada = "Usa el formato HH:MM para la hora.";
   }
 
   if (!form.motivo.trim()) {
-    errors.motivo = "El motivo es obligatorio";
+    errors.motivo = "El motivo es obligatorio.";
   } else if (!/[a-zA-ZáéíóúÁÉÍÓÚñÑ]/.test(form.motivo)) {
-    errors.motivo = "El motivo debe contener letras";
+    errors.motivo = "Escribe un motivo que incluya al menos una letra.";
   }
 
   return {
@@ -123,23 +123,23 @@ export function validateRegistroForm(form: RegistroForm) {
   const correo = form.correo.trim().toLowerCase();
   const telefono = form.telefono.replace(/\D/g, ""); // solo dígitos
 
-  if (!nombre) errors.nombre = "Escribe tu nombre";
-  if (!apellidoPaterno) errors.apellidoPaterno = "Escribe tu apellido paterno";
+  if (!nombre) errors.nombre = "Escribe tu nombre.";
+  if (!apellidoPaterno) errors.apellidoPaterno = "Escribe tu apellido paterno.";
 
-  if (!correo) errors.correo = "Escribe tu correo";
-  else if (!EMAIL_REGEX.test(correo)) errors.correo = "El correo no es válido";
+  if (!correo) errors.correo = "Escribe tu correo.";
+  else if (!EMAIL_REGEX.test(correo)) errors.correo = "El correo no es válido.";
 
   // Quitar este bloque si el backend deja el teléfono como opcional
-  if (!telefono) errors.telefono = "Escribe tu teléfono";
-  else if (telefono.length !== 10) errors.telefono = "Debe tener 10 dígitos";
+  if (!telefono) errors.telefono = "Escribe tu teléfono.";
+  else if (telefono.length !== 10) errors.telefono = "El teléfono debe tener 10 dígitos.";
 
-  if (!form.password) errors.password = "Escribe una contraseña";
+  if (!form.password) errors.password = "Escribe una contraseña.";
   else if (form.password.length < 8)
-    errors.password = "Mínimo 8 caracteres";
+    errors.password = "La contraseña debe tener al menos 8 caracteres.";
 
-  if (!form.confirmarPassword) errors.confirmarPassword = "Confirma tu contraseña";
+  if (!form.confirmarPassword) errors.confirmarPassword = "Confirma tu contraseña.";
   else if (form.password !== form.confirmarPassword)
-    errors.confirmarPassword = "Las contraseñas no coinciden";
+    errors.confirmarPassword = "Las contraseñas no coinciden.";
 
   return {
     valid: Object.keys(errors).length === 0,
