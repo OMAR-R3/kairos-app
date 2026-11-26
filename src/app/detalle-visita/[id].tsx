@@ -27,7 +27,7 @@ const ESTADO_CONFIG: Record<
   finalizada: { bg: "#E0E7FF", text: "#3730A3", label: "Finalizada" },
 };
 
-const ESTADO_DEFAULT = { bg: "#F3F4F6", text: "#374151", label: "Desconocido" };
+const ESTADO_DEFAULT = { bg: "#F3F4F6", text: "#374151", label: "Estado desconocido" };
 
 function formatearFecha(fechaISO: string): string {
   const [anio, mes, dia] = fechaISO.split("T")[0].split("-");
@@ -78,7 +78,7 @@ export default function DetalleVisitaScreen() {
         return;
       }
       if (err instanceof VisitaNoEncontradaError) {
-        Alert.alert("Error", err.message);
+        Alert.alert("Visita no encontrada", err.message);
         router.back();
         return;
       }
@@ -144,7 +144,7 @@ export default function DetalleVisitaScreen() {
         <View style={styles.separator} />
 
         <CampoInfo label="Folio" value={visita.folio} />
-        <CampoInfo label="Departamento" value={visita.departamento?.nombre ?? "Departamento desconocido"} />
+        <CampoInfo label="Departamento" value={visita.departamento?.nombre ?? "Departamento sin especificar"} />
         <CampoInfo label="Fecha" value={formatearFecha(visita.fecha)} />
         <CampoInfo label="Hora" value={formatearHora(visita.hora_inicio)} />
         <CampoInfo

@@ -55,7 +55,8 @@ export default function SolicitarVisitaScreen() {
   const [form, setForm] = useState<VisitaForm>(FORM_INICIAL);
   const [errors, setErrors] = useState<VisitaErrors>({});
   const [loading, setLoading] = useState(false);
-  const [departamentos, setDepartamentos] = useState<Departamento[]>([]);
+  const [departamentos, setDepartamentos] = useState<Departamento[] | null>(null);
+  const [errorDepartamentos, setErrorDepartamentos] = useState<string | null>(null);
 
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [tempDate, setTempDate] = useState(new Date());
@@ -66,7 +67,9 @@ export default function SolicitarVisitaScreen() {
   useEffect(() => {
     VisitasService.obtenerDepartamentos()
       .then(setDepartamentos)
-      .catch(() => {});
+      .catch((error: unknown) => {
+        setErrorDepartamentos(error instanceof Error ? error.message : "No se pudieron cargar los departamentos. Vuelve a abrir el formulario para intentarlo de nuevo.");
+      });
   }, []);
 
   const setCampo = (campo: keyof VisitaForm) => (texto: string) => {
@@ -121,17 +124,22 @@ export default function SolicitarVisitaScreen() {
         params: { folio },
       });
     } catch (e) {
-      const mensaje = e instanceof Error ? e.message : "No se pudo agendar la visita";
-      Alert.alert("Error", mensaje);
+      const mensaje = e instanceof Error ? e.message : "No se pudo enviar la solicitud de visita. Inténtalo de nuevo.";
+      Alert.alert("No se pudo enviar la solicitud", mensaje);
     } finally {
       setLoading(false);
     }
   };
 
   const deptOptions = [
-    { label: "Seleccionar....", value: "" },
-    ...departamentos.map((d) => ({ label: d.nombre, value: String(d.id) })),
+    { label: "Selecciona un departamento", value: "" },
+    ...(departamentos ?? []).map((d) => ({ label: d.nombre, value: String(d.id) })),
   ];
+  const estadoDepartamentos = errorDepartamentos
+    ? "Departamentos no disponibles"
+    : departamentos === null
+      ? "Cargando departamentos…"
+      : departamentos.length === 0 ? "No hay departamentos disponibles." : undefined;
 
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
@@ -146,16 +154,17 @@ export default function SolicitarVisitaScreen() {
           <Text style={styles.seccion}>Detalles de la visita</Text>
 
           <CampoSelector
-            label="Departamento a visitar"
+            label="Departamento"
             value={form.departamento}
             onChange={setCampo("departamento")}
             options={deptOptions}
-            error={errors.departamento}
+            error={errorDepartamentos ?? (estadoDepartamentos ? undefined : errors.departamento)}
+            estado={estadoDepartamentos}
           />
 
           {/* Fecha con calendario */}
           <View style={pickerFieldStyles.campo}>
-            <Text style={pickerFieldStyles.label}>Fecha de cita (Lunes a viernes)</Text>
+            <Text style={pickerFieldStyles.label}>Fecha de la visita (lunes a viernes)</Text>
             <Pressable
               onPress={() => setShowDatePicker(true)}
               style={[
@@ -281,9 +290,10 @@ type SelectorProps = {
   onChange: (v: string) => void;
   options: { label: string; value: string }[];
   error?: string;
+  estado?: string;
 };
 
-function CampoSelector({ label, value, onChange, options, error }: SelectorProps) {
+function CampoSelector({ label, value, onChange, options, error, estado }: SelectorProps) {
   const [open, setOpen] = useState(false);
   const selected = options.find((o) => o.value === value);
 
@@ -291,11 +301,12 @@ function CampoSelector({ label, value, onChange, options, error }: SelectorProps
     <View style={selectorStyles.campo}>
       <Text style={selectorStyles.label}>{label}</Text>
       <Pressable
+        disabled={Boolean(estado)}
         onPress={() => setOpen(!open)}
         style={[selectorStyles.input, error ? selectorStyles.inputError : null]}
       >
         <Text style={value ? selectorStyles.text : selectorStyles.placeholder}>
-          {selected?.label ?? "Seleccionar...."}
+          {estado ?? selected?.label ?? "Selecciona un departamento"}
         </Text>
       </Pressable>
       {open && (

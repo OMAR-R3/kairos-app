@@ -69,7 +69,7 @@ describe("LookupService", () => {
 
   it("lanza error si se intenta verificar sin solicitar primero", async () => {
     await expect(LookupService.verificarCodigo("12345678")).rejects.toThrow(
-      "Primero solicita",
+      "Solicita un nuevo código de verificación.",
     );
   });
 
@@ -126,6 +126,19 @@ describe("LookupService", () => {
     expect(url).not.toContain("/api/visits/me");
     expect(url).toContain("correo=hist%40mail.com");
     expect(opts.headers.Authorization).toBe("Bearer tok-hist");
+  });
+
+  it("distingue el historial vacío de una respuesta inesperada", async () => {
+    mockFetch
+      .mockResolvedValueOnce(respuesta(202, { challengeId: "ch-9", browserSecret: "sec-9" }))
+      .mockResolvedValueOnce(respuesta(200, { accessToken: "tok-historial" }))
+      .mockResolvedValueOnce(respuesta(200, { data: [] }))
+      .mockResolvedValueOnce(respuesta(200, { data: {} }));
+
+    await LookupService.solicitarCodigo("hist@mail.com");
+    await LookupService.verificarCodigo("99999999");
+    await expect(LookupService.obtenerHistorial()).resolves.toEqual([]);
+    await expect(LookupService.obtenerHistorial()).rejects.toThrow("No se pudo cargar el historial.");
   });
 
   it("acepta el departamento que llega como Departamentos del lookup", async () => {

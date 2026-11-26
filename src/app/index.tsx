@@ -64,8 +64,8 @@ export default function LoginScreen() {
       });
       router.replace("/inicio");
     } catch (e) {
-      const mensaje = e instanceof Error ? e.message : "No se pudo iniciar sesión";
-      Alert.alert("Error", mensaje);
+      const mensaje = e instanceof Error ? e.message : "No se pudo iniciar sesión. Inténtalo de nuevo.";
+      Alert.alert("No se pudo iniciar sesión", mensaje);
     } finally {
       setLoading(false);
     }
@@ -82,7 +82,7 @@ export default function LoginScreen() {
   return (
     <Screen
       title="Kairos Visitas"
-      subtitle="Inicia sesión con tu cuenta del Extranet de Kairos"
+      subtitle="Inicia sesión con tu cuenta de la extranet de Kairos"
     >
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}

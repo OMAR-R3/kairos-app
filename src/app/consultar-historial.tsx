@@ -15,8 +15,6 @@ import {
 import Campo from "../components/Campo";
 import Screen from "../components/Screen";
 import {
-  CodigoInvalidoError,
-  DemasiadosIntentosError,
   LookupService,
   SesionLookupExpiradaError,
 } from "../services/LookupService";
@@ -66,7 +64,7 @@ const ESTADO_DEFAULT = {
   bg: "#F3F4F6",
   text: "#374151",
   border: "#9CA3AF",
-  label: "Desconocido",
+  label: "Estado desconocido",
 };
 
 function formatearFecha(fechaISO: string): string {
@@ -82,7 +80,7 @@ function formatearTiempo(segundos: number): string {
 
 function VisitaCard({ visita }: { visita: Visita }) {
   const config = ESTADO_CONFIG[visita.estado] ?? ESTADO_DEFAULT;
-  const depto = visita.departamento?.nombre ?? "Departamento desconocido";
+  const depto = visita.departamento?.nombre ?? "Departamento sin especificar";
 
   return (
     <View style={[styles.card, { borderLeftColor: config.border }]}>
@@ -105,7 +103,7 @@ function ListaVacia() {
   return (
     <View style={styles.emptyContainer}>
       <Text style={styles.emptyText}>
-        No se encontraron visitas para este correo
+        No se encontraron visitas para este correo.
       </Text>
     </View>
   );
@@ -138,8 +136,8 @@ export default function ConsultarHistorialScreen() {
         setCodigo("");
         setVisitas([]);
         Alert.alert(
-          "Sesion expirada",
-          "Tu sesion de consulta expiro. Solicita un nuevo codigo.",
+          "Sesión expirada",
+          "Tu sesión de consulta expiró. Solicita un nuevo código.",
         );
       }
     };
@@ -151,11 +149,11 @@ export default function ConsultarHistorialScreen() {
   const handleSolicitarCodigo = async () => {
     const correoNorm = correo.trim().toLowerCase();
     if (!correoNorm) {
-      setError("Ingresa tu correo electronico");
+      setError("Ingresa tu correo electrónico.");
       return;
     }
     if (!EMAIL_REGEX.test(correoNorm)) {
-      setError("El correo no tiene un formato valido");
+      setError("El correo no tiene un formato válido.");
       return;
     }
 
@@ -170,7 +168,7 @@ export default function ConsultarHistorialScreen() {
       setError(
         err instanceof Error
           ? err.message
-          : "No se pudo enviar el codigo",
+          : "No se pudo enviar el código. Inténtalo de nuevo.",
       );
     } finally {
       setLoading(false);
@@ -180,11 +178,11 @@ export default function ConsultarHistorialScreen() {
   const handleVerificarCodigo = async () => {
     const codigoLimpio = codigo.trim();
     if (!codigoLimpio) {
-      setError("Ingresa el codigo de verificacion");
+      setError("Ingresa el código de verificación.");
       return;
     }
     if (codigoLimpio.length !== 8 || !/^\d{8}$/.test(codigoLimpio)) {
-      setError("El codigo debe tener exactamente 8 digitos");
+      setError("El código debe tener 8 dígitos.");
       return;
     }
 
@@ -199,10 +197,10 @@ export default function ConsultarHistorialScreen() {
       if (err instanceof SesionLookupExpiradaError) {
         setPaso("correo");
         setCodigo("");
-        Alert.alert("Sesion expirada", err.message);
+        Alert.alert("Sesión expirada", err.message);
       } else {
         setError(
-          err instanceof Error ? err.message : "Error al verificar el codigo",
+          err instanceof Error ? err.message : "No se pudo completar la consulta. Inténtalo de nuevo.",
         );
       }
     } finally {
@@ -217,14 +215,14 @@ export default function ConsultarHistorialScreen() {
       await LookupService.solicitarCodigo(correo);
       setCodigo("");
       Alert.alert(
-        "Codigo reenviado",
-        `Enviamos un nuevo codigo a ${correo}`,
+        "Código reenviado",
+        `Enviamos un nuevo código a ${correo}`,
       );
     } catch (err) {
       setError(
         err instanceof Error
           ? err.message
-          : "No se pudo reenviar el codigo",
+          : "No se pudo reenviar el código. Inténtalo de nuevo.",
       );
     } finally {
       setReenviando(false);
@@ -258,7 +256,7 @@ export default function ConsultarHistorialScreen() {
     return (
       <Screen
         title="Consultar historial"
-        subtitle="Ingresa tu correo para recibir un codigo de verificacion"
+        subtitle="Ingresa tu correo para recibir un código de verificación"
       >
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -269,7 +267,7 @@ export default function ConsultarHistorialScreen() {
             contentContainerStyle={styles.scroll}
           >
             <Campo
-              label="Correo electronico"
+              label="Correo electrónico"
               value={correo}
               onChangeText={(t) => {
                 setCorreo(t);
@@ -289,7 +287,7 @@ export default function ConsultarHistorialScreen() {
               {loading ? (
                 <ActivityIndicator color="#FFFFFF" />
               ) : (
-                <Text style={styles.buttonText}>Enviar codigo</Text>
+                <Text style={styles.buttonText}>Enviar código</Text>
               )}
             </Pressable>
 
@@ -302,12 +300,12 @@ export default function ConsultarHistorialScreen() {
     );
   }
 
-  // ── Paso 2: Codigo de verificacion ──────────────────────────────────
+  // ── Paso 2: Código de verificación ──────────────────────────────────
   if (paso === "codigo") {
     return (
       <Screen
-        title="Codigo de verificacion"
-        subtitle={`Enviamos un codigo de 8 digitos a ${correo}`}
+        title="Código de verificación"
+        subtitle={`Enviamos un código de 8 dígitos a ${correo}`}
       >
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -318,7 +316,7 @@ export default function ConsultarHistorialScreen() {
             contentContainerStyle={styles.scroll}
           >
             <Campo
-              label="Codigo de verificacion"
+              label="Código de verificación"
               value={codigo}
               onChangeText={(t) => {
                 setCodigo(t.replace(/\D/g, ""));
@@ -339,7 +337,7 @@ export default function ConsultarHistorialScreen() {
               {loading ? (
                 <ActivityIndicator color="#FFFFFF" />
               ) : (
-                <Text style={styles.buttonText}>Verificar codigo</Text>
+                <Text style={styles.buttonText}>Verificar código</Text>
               )}
             </Pressable>
 
@@ -351,7 +349,7 @@ export default function ConsultarHistorialScreen() {
               {reenviando ? (
                 <ActivityIndicator size="small" color="#171717" />
               ) : (
-                <Text style={styles.linkText}>Reenviar codigo</Text>
+                <Text style={styles.linkText}>Reenviar código</Text>
               )}
             </Pressable>
 
@@ -383,7 +381,7 @@ export default function ConsultarHistorialScreen() {
             tiempoRestante < 60 && styles.timerTextUrgent,
           ]}
         >
-          Sesion valida: {formatearTiempo(tiempoRestante)}
+          Tiempo restante de la sesión: {formatearTiempo(tiempoRestante)}
         </Text>
       </View>
 

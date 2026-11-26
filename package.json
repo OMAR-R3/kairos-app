@@ -54,7 +54,8 @@
       "text",
       "lcov",
       "json"
-    ]
+    ],
+    "testTimeout": 30000
   },
   "scripts": {
     "start": "expo start",

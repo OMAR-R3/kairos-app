@@ -30,7 +30,7 @@ const ESTADO_CONFIG: Record<
   finalizada: { bg: "#E0E7FF", text: "#3730A3", border: "#6366F1", label: "Finalizada" },
 };
 
-const ESTADO_DEFAULT = { bg: "#F3F4F6", text: "#374151", border: "#9CA3AF", label: "Desconocido" };
+const ESTADO_DEFAULT = { bg: "#F3F4F6", text: "#374151", border: "#9CA3AF", label: "Estado desconocido" };
 
 function formatearFecha(fechaISO: string): string {
   const [anio, mes, dia] = fechaISO.split("T")[0].split("-");
@@ -68,14 +68,14 @@ function VisitaCard({
 function ListaVacia() {
   return (
     <View style={styles.emptyContainer}>
-      <Text style={styles.emptyText}>Aún no tienes visitas</Text>
+      <Text style={styles.emptyText}>Aún no tienes visitas registradas.</Text>
     </View>
   );
 }
 
 function getNombreDepto(visita: Visita, mapa: Record<string, string>): string {
   if (visita.departamento?.nombre) return visita.departamento.nombre;
-  return mapa[String(visita.depto_id)] ?? "Departamento desconocido";
+  return mapa[String(visita.depto_id)] ?? "Departamento sin especificar";
 }
 
 export default function MisVisitasScreen() {
@@ -110,7 +110,7 @@ export default function MisVisitasScreen() {
         router.replace("/");
         return;
       }
-      setError(err instanceof Error ? err.message : "No se pudieron cargar las visitas");
+      setError(err instanceof Error ? err.message : "No se pudieron cargar las visitas. Inténtalo de nuevo.");
     } finally {
       setCargando(false);
     }
