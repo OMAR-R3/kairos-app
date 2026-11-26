@@ -13,6 +13,7 @@ import type { Href } from "expo-router";
 import Screen from "../components/Screen";
 import {
   Departamento,
+  ErrorConexion,
   SesionExpiradaError,
   Visita,
   VisitasService,
@@ -90,7 +91,10 @@ export default function MisVisitasScreen() {
     try {
       const [listaVisitas, listaDepartamentos] = await Promise.all([
         VisitasService.obtenerMisVisitas(),
-        VisitasService.obtenerDepartamentos(),
+        VisitasService.obtenerDepartamentos().catch((error: unknown) => {
+          if (error instanceof ErrorConexion) return [];
+          throw error;
+        }),
       ]);
 
       const mapa: Record<string, string> = {};
