@@ -65,6 +65,16 @@ function VisitaCard({
   );
 }
 
+function AvisoOffline() {
+  return (
+    <View style={styles.offlineBanner}>
+      <Text style={styles.offlineBannerText}>
+        Sin conexión — mostrando la última actualización
+      </Text>
+    </View>
+  );
+}
+
 function ListaVacia() {
   return (
     <View style={styles.emptyContainer}>
@@ -84,10 +94,12 @@ export default function MisVisitasScreen() {
   const [deptos, setDeptos] = useState<Record<string, string>>({});
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [offline, setOffline] = useState(false);
 
   const cargarDatos = useCallback(async () =>{
     setCargando(true);
     setError(null);
+    setOffline(false);
     try {
       const [listaVisitas, listaDepartamentos] = await Promise.all([
         VisitasService.obtenerMisVisitas(),
@@ -104,6 +116,7 @@ export default function MisVisitasScreen() {
 
       setDeptos(mapa);
       setVisitas(listaVisitas);
+      setOffline(VisitasService.ultimaConsultaOffline());
     } catch (err) {
       if (err instanceof SesionExpiradaError) {
         Alert.alert("Sesión expirada", err.message);
@@ -155,6 +168,7 @@ export default function MisVisitasScreen() {
 
   return (
     <Screen title="Mis visitas" subtitle="Historial y estado de tus solicitudes">
+      {offline ? <AvisoOffline /> : null}
       <FlatList
         data={visitas}
         keyExtractor={(item) => String(item.id)}
@@ -260,5 +274,19 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontWeight: "700",
     fontSize: 15,
+  },
+  offlineBanner: {
+    backgroundColor: "#FEF3C7",
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    marginBottom: 12,
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  offlineBannerText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#92400E",
   },
 });
