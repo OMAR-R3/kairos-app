@@ -92,6 +92,21 @@ it.each([[null], [{}], [{ success: false, data: [] }], [[{ ...visita, fecha: nul
   },
 );
 
+it("acepta la forma real de /api/visits/me, sin depto_id y con el departamento anidado", async () => {
+  const { depto_id: _omitido, ...base } = visita;
+  const real = { ...base, folio: "KV-000123", departamento: { id: 2, nombre: "Vinculación", ubicacion: "Edificio C" } };
+  mockFetch.mockResolvedValueOnce(respuesta(200, { success: true, data: [real] }));
+  await expect(modulo.VisitasService.obtenerMisVisitas()).resolves.toEqual([real]);
+  sinConexion();
+  await expect(modulo.VisitasService.obtenerMisVisitas()).resolves.toEqual([base]);
+});
+
+it("rechaza una visita sin depto_id y sin departamento", async () => {
+  const { depto_id: _omitido, departamento: _depto, ...sinDepto } = visita;
+  mockFetch.mockResolvedValueOnce(respuesta(200, { data: [sinDepto] }));
+  await expect(modulo.VisitasService.obtenerMisVisitas()).rejects.toThrow("No se pudieron cargar las visitas");
+});
+
 it("devuelve los datos del servidor si falla la escritura", async () => {
   mockGuardar.mockRejectedValueOnce(new Error("Almacenamiento no disponible"));
   await sincronizar();

@@ -78,7 +78,7 @@ export type DatosVisita = {
 
 export type Visita = {
   id: number;
-  depto_id: number;
+  depto_id?: number; // /api/visits/me no lo manda; el departamento viene en `departamento`
   fecha: string;
   hora_inicio: string;
   motivo: string;

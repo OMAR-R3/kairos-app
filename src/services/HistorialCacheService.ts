@@ -23,7 +23,7 @@ function esVisita(valor: unknown): valor is Visita {
   const visita = valor as Partial<Visita>;
   const departamento = visita.departamento;
   return esId(visita.id) &&
-    esId(visita.depto_id) &&
+    (esId(visita.depto_id) || (departamento != null && esId(departamento.id))) &&
     typeof visita.fecha === "string" &&
     /^\d{4}-\d{2}-\d{2}(?:T.+)?$/.test(visita.fecha) &&
     Number.isFinite(Date.parse(visita.fecha)) &&
